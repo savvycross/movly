@@ -8,13 +8,10 @@ import {
   type TemplateColors,
   type TemplateParams,
 } from '../engine'
+import { DURATION_RANGE, HEADLINE_MAX, SPEED_RANGE, SUBLINE_MAX } from '../limits'
 import { PALETTES, sameColors } from '../palettes'
 import { TemplateThumb } from './TemplateThumb'
 
-export const HEADLINE_MAX = 60
-export const SUBLINE_MAX = 100
-export const DURATION_RANGE = { min: 2, max: 15, step: 0.5 }
-export const SPEED_RANGE = { min: 0.5, max: 2, step: 0.05 }
 
 interface SidebarProps {
   templates: readonly Template[]
@@ -32,6 +29,8 @@ interface SidebarProps {
   onLogoFile: (file: File | null) => void
   duration: number
   onDuration: (seconds: number) => void
+  /** Locks every control (e.g. while exporting). */
+  disabled?: boolean
 }
 
 function Section({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
@@ -54,13 +53,14 @@ const COLOR_FIELDS: { key: keyof TemplateColors; label: string }[] = [
 
 export const Sidebar = memo(function Sidebar(props: SidebarProps) {
   const { templates, selectedId, onSelectTemplate, aspect, onAspect, params, onParams } = props
-  const { customColors, onColors, onResetColors, logoName, onLogoFile, duration, onDuration } = props
+  const { customColors, onColors, onResetColors, logoName, onLogoFile, duration, onDuration, disabled } = props
   const ids = { headline: useId(), subline: useId(), speed: useId(), duration: useId(), logo: useId() }
   const stage = ASPECT_RATIOS[aspect]
   const thumbStyle = { '--arw': stage.width, '--arh': stage.height } as CSSProperties
 
   return (
     <aside className="sidebar" aria-label="Templates and customization">
+      <fieldset className="sidebar-fieldset" disabled={disabled}>
       <Section title="Templates">
         <div className="template-grid" role="listbox" aria-label="Templates">
           {templates.map((t) => (
@@ -251,6 +251,7 @@ export const Sidebar = memo(function Sidebar(props: SidebarProps) {
           />
         </label>
       </Section>
+      </fieldset>
     </aside>
   )
 })

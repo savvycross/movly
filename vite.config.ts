@@ -6,4 +6,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   base: '/movly/',
   plugins: [react()],
+  // Export libraries are loaded lazily; pre-bundle them so the dev server
+  // doesn't reload the page the first time an export starts.
+  optimizeDeps: { include: ['mediabunny', 'gifenc'] },
 })
