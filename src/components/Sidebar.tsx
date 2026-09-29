@@ -8,9 +8,11 @@ import {
   type TemplateColors,
   type TemplateParams,
 } from '../engine'
-import { DURATION_RANGE, HEADLINE_MAX, SPEED_RANGE, SUBLINE_MAX } from '../limits'
+import { DURATION_RANGE, HEADLINE_MAX, HEADLINE_PLACEHOLDER, SPEED_RANGE, SUBLINE_MAX, withHeadlinePlaceholder } from '../limits'
 import { PALETTES, sameColors } from '../palettes'
 import { TemplateThumb } from './TemplateThumb'
+import { DescribeBox } from './DescribeBox'
+import type { Suggestion } from '../describe/match'
 
 
 interface SidebarProps {
@@ -31,6 +33,7 @@ interface SidebarProps {
   onDuration: (seconds: number) => void
   /** Locks every control (e.g. while exporting). */
   disabled?: boolean
+  onApplySuggestion: (suggestion: Suggestion) => void
 }
 
 function Section({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
@@ -54,13 +57,20 @@ const COLOR_FIELDS: { key: keyof TemplateColors; label: string }[] = [
 export const Sidebar = memo(function Sidebar(props: SidebarProps) {
   const { templates, selectedId, onSelectTemplate, aspect, onAspect, params, onParams } = props
   const { customColors, onColors, onResetColors, logoName, onLogoFile, duration, onDuration, disabled } = props
+  const { onApplySuggestion } = props
   const ids = { headline: useId(), subline: useId(), speed: useId(), duration: useId(), logo: useId() }
   const stage = ASPECT_RATIOS[aspect]
   const thumbStyle = { '--arw': stage.width, '--arh': stage.height } as CSSProperties
+  const renderParams = withHeadlinePlaceholder(params)
+  const headlineEmpty = !params.headline.trim()
 
   return (
     <aside className="sidebar" aria-label="Templates and customization">
       <fieldset className="sidebar-fieldset" disabled={disabled}>
+      <Section title="Describe it">
+        <DescribeBox params={renderParams} aspect={aspect} customColors={customColors} onApply={onApplySuggestion} />
+      </Section>
+
       <Section title="Templates">
         <div className="template-grid" role="listbox" aria-label="Templates">
           {templates.map((t) => (
@@ -76,7 +86,7 @@ export const Sidebar = memo(function Sidebar(props: SidebarProps) {
                 <TemplateThumb
                   template={t}
                   stage={stage}
-                  params={{ ...params, colors: customColors ?? t.defaultColors }}
+                  params={{ ...renderParams, colors: customColors ?? t.defaultColors }}
                 />
               </span>
               <span className="template-name">{t.name}</span>
@@ -117,8 +127,15 @@ export const Sidebar = memo(function Sidebar(props: SidebarProps) {
             value={params.headline}
             maxLength={HEADLINE_MAX}
             onChange={(e) => onParams({ headline: e.target.value })}
-            placeholder="Your headline"
+            placeholder={HEADLINE_PLACEHOLDER}
+            aria-invalid={headlineEmpty}
+            aria-describedby={headlineEmpty ? `${ids.headline}-hint` : undefined}
           />
+          {headlineEmpty && (
+            <span id={`${ids.headline}-hint`} className="field-hint">
+              Add a headline. The preview shows placeholder text until you do.
+            </span>
+          )}
         </label>
         <label className="field" htmlFor={ids.subline}>
           <span className="field-label">Subline</span>

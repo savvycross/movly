@@ -2,18 +2,52 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Movly: free motion graphics maker in your browser</title>
+    <meta
+      name="description"
+      content="Turn any text into a scroll-stopping animation. Pick a template, add your words, colors and logo, and download MP4 or GIF. Free, no signup, runs in your browser."
+    />
     <meta name="theme-color" content="#0b0b10" />
-    <meta name="description" content="Movly — free motion graphics in your browser." />
+
+    <!-- Icons -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="canonical" href="%VITE_SITE_URL%" />
+
+    <!-- Open Graph (Telegram, WhatsApp, Facebook, LinkedIn…). Image URLs must be absolute. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Movly" />
+    <meta property="og:url" content="%VITE_SITE_URL%" />
+    <meta property="og:title" content="Movly: free motion graphics in your browser" />
+    <meta
+      property="og:description"
+      content="Turn any text into a scroll-stopping animation. No signup, no watermark unless you want one."
+    />
+    <meta property="og:image" content="%VITE_SITE_URL%og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="MAKE IT MOVE in bold kinetic type, made with Movly" />
+
+    <!-- X / Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Movly: free motion graphics in your browser" />
+    <meta
+      name="twitter:description"
+      content="Turn any text into a scroll-stopping animation. No signup, no watermark unless you want one."
+    />
+    <meta name="twitter:image" content="%VITE_SITE_URL%og-image.png" />
+    <meta name="twitter:image:alt" content="MAKE IT MOVE in bold kinetic type, made with Movly" />
+
     <!-- Free web fonts for canvas text; keep in sync with FONTS in src/engine/fonts.ts. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;700;800&family=Montserrat:wght@400;500;700;800&family=Playfair+Display:wght@400;500;700;800&family=Space+Mono:wght@400;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&family=Montserrat:wght@400;500;700;800&family=Playfair+Display:wght@400;500;700;800&family=Space+Mono:wght@400;700&display=swap"
     />
-    <title>Movly — Free motion graphics</title>
   </head>
   <body>
     <div id="root"></div>
