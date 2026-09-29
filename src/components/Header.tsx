@@ -9,7 +9,6 @@ export function Header() {
         </span>
         <span className="brand-name">Movly</span>
       </a>
-      <span className="header-tag">Free motion graphics · runs in your browser</span>
     </header>
   )
 }

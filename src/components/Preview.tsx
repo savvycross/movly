@@ -13,6 +13,8 @@ export function Preview({ template, params, stage, time }: PreviewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [cssWidth, setCssWidth] = useState(0)
   const [fontVersion, setFontVersion] = useState(0)
+  // Only show the loading pill if the font takes a noticeable moment (avoids flashes when cached).
+  const [fontLoading, setFontLoading] = useState(false)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -25,9 +27,16 @@ export function Preview({ template, params, stage, time }: PreviewProps) {
   // Canvas won't fetch web fonts itself; re-render once the chosen family is ready.
   useEffect(() => {
     let cancelled = false
-    loadFont(params.font).then(() => !cancelled && setFontVersion((v) => v + 1))
+    const slow = setTimeout(() => !cancelled && setFontLoading(true), 150)
+    loadFont(params.font).then(() => {
+      clearTimeout(slow)
+      if (cancelled) return
+      setFontLoading(false)
+      setFontVersion((v) => v + 1)
+    })
     return () => {
       cancelled = true
+      clearTimeout(slow)
     }
   }, [params.font])
 
@@ -49,6 +58,14 @@ export function Preview({ template, params, stage, time }: PreviewProps) {
     <div className="preview">
       <div className="canvas" style={style}>
         <canvas ref={canvasRef} aria-label={`${template.name} preview`} />
+        <div className={`font-loading${fontLoading ? ' visible' : ''}`} role="status" aria-live="polite">
+          {fontLoading && (
+            <>
+              <span className="spinner" aria-hidden="true" />
+              Loading {params.font}…
+            </>
+          )}
+        </div>
       </div>
     </div>
   )

@@ -14,6 +14,9 @@ const TEXTS = [
   { headline: 'Supercalifragilisticexpialidocious', subline: 'Pneumonoultramicroscopicsilicovolcanoconiosis' },
 ]
 
+/** Blank text must never crash a template (the app substitutes a placeholder, but be robust anyway). */
+const EMPTY = { headline: '', subline: '' }
+
 const params = (text: (typeof TEXTS)[number]): TemplateParams => ({
   ...text,
   colors: { bg: '#101010', primary: '#ffffff', accent: '#ff3366' },
@@ -26,7 +29,7 @@ describe.each(TEMPLATES.map((t) => [t.name, t] as const))('%s', (_, template) =>
   it.each(ASPECT_RATIO_IDS)('renders every frame without errors at %s', (aspect) => {
     for (const duration of [2, template.defaultDuration, 12]) {
       const stage = getStage(aspect, duration, 1)
-      for (const text of TEXTS) {
+      for (const text of [...TEXTS, EMPTY]) {
         const { ctx, problems } = createMockContext(stage.width, stage.height)
         for (let f = 0; f <= duration * 30; f += 3) renderFrame(ctx, template, f / 30, params(text), stage)
         expect(problems).toEqual([])

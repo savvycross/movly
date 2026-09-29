@@ -6,10 +6,14 @@ import { FPS } from './engine'
  * `totalFrames` is the composition length. With `loop` it wraps to 0 at the
  * end, otherwise it stops on the last frame.
  */
-export function usePlayback(totalFrames: number, loop: boolean, fps: number = FPS) {
-  const [frame, setFrame] = useState(0)
-  const [playing, setPlaying] = useState(false)
-  const frameRef = useRef(0)
+export function usePlayback(
+  totalFrames: number,
+  loop: boolean,
+  { autoplay = false, initialFrame = 0, fps = FPS }: { autoplay?: boolean; initialFrame?: number; fps?: number } = {},
+) {
+  const [frame, setFrame] = useState(initialFrame)
+  const [playing, setPlaying] = useState(autoplay)
+  const frameRef = useRef(initialFrame)
   // Wall-clock anchor for the current play run; reset on seek so playback resumes from the new frame.
   const anchorRef = useRef<{ time: number; frame: number } | null>(null)
   const lastFrame = totalFrames - 1
@@ -63,6 +67,7 @@ export function usePlayback(totalFrames: number, loop: boolean, fps: number = FP
   )
 
   const pause = useCallback(() => setPlaying(false), [])
+  const play = useCallback(() => setPlaying(true), [])
 
-  return { frame, playing, toggle, seek, pause }
+  return { frame, playing, toggle, seek, pause, play }
 }

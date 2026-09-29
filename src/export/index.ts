@@ -47,6 +47,7 @@ export async function runExport({ comp, format, quality, plan, signal, onProgres
   const { width, height } = exportSize(stage, format, quality)
   const frames = exportFrameCount(comp.duration, format)
   await loadFont(comp.params.font)
+  if (comp.watermark) await loadFont('Inter')
 
   let file
   if (format === 'gif') {

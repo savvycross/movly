@@ -38,6 +38,7 @@ npm run dev       # local dev server
 npm run build     # typecheck (tsc -b) + production build into dist/
 npm test          # vitest unit tests (engine helpers, template registry)
 npm run preview   # serve the production build locally
+npm run share-images  # regenerate public/og-image.png + icons (needs Playwright Chromium)
 ```
 
 ## Project layout
@@ -48,11 +49,16 @@ src/
   App.tsx               # app state: template, aspect, params, duration, colors, logo
   palettes.ts           # 8 ready-made color palettes
   settings.ts           # remember last settings in localStorage (validated; never the logo)
-  limits.ts             # input limits shared by controls and settings validation
+  limits.ts             # input limits, headline placeholder (withHeadlinePlaceholder)
+  describe/
+    match.ts            # "Describe it": offline keyword/synonym matcher → ranked suggestions
+    match.test.ts       # 26 example phrases + name/aspect/fallback tests
   thumbClock.ts         # one shared rAF loop for all template thumbnails
   usePlayback.ts        # requestAnimationFrame playback clock (frame-based, loop/stop)
   components/
     Header.tsx          # Movly branding
+    Hero.tsx            # short landing intro + "Start creating" (scrolls to #editor)
+    DescribeBox.tsx     # "Describe it" input, example chips, 3 animated suggestions
     Sidebar.tsx         # template grid, format, text, colors, font, logo, timing controls
     TemplateThumb.tsx   # animated mini-preview (only animates while visible)
     Preview.tsx         # <canvas> preview: DPR-aware sizing, font loading, renderFrame
@@ -65,6 +71,7 @@ src/
     video.ts            # WebCodecs + Mediabunny path, MediaRecorder fallback
     gif.ts, gif.worker.ts  # GIF via gifenc in a Web Worker (global palette)
     mediabunny*.ts      # the only Mediabunny import sites (tree-shaken, lazy-loaded)
+    watermark.ts        # optional "Made with Movly" corner badge (off by default)
     index.ts            # runExport(), detectVideoPlan()
   engine/               # framework-free animation engine (no React imports)
     types.ts            # Template, TemplateParams, StageInfo, TemplateColors
@@ -138,6 +145,45 @@ Stages: **16:9 = 1920×1080, 1:1 = 1080×1080, 4:5 = 1080×1350, 9:16 = 1080×19
   stays out of the main bundle.
 - Test locally: Playwright's Chromium has no H.264 encoder, so headless tests
   produce WebM; real Chrome/Edge/Safari produce MP4.
+
+## "Describe it" matcher
+
+`src/describe/match.ts` is deliberately **not** AI: weighted keyword tables
+(`TEMPLATE_RULES`, `PALETTE_RULES`, `FONT_RULES`, `SPEED_RULES`,
+`ASPECT_RULES`) plus `TOPICS` for default headlines. Weights: 3 = names the
+thing, 2 = strong intent, 1 = mood. Plurals match automatically. Headline
+priority: quoted text / "called X" > event topic (sale, birthday…) > a
+Capitalized business name > topic headline. Anything the text doesn't mention
+stays unchanged when a suggestion is applied.
+
+When adding a template, add a `TEMPLATE_RULES` entry for it and at least one
+phrase to `match.test.ts`. Tune weights with real phrases, never by
+special-casing a test.
+
+## Watermark
+
+"Made with Movly" is **opt-in** (unchecked by default in the export dialog)
+and is drawn only on exports (`Composition.watermark`), never in the preview.
+It's drawn in canvas pixels after the template so it's the same relative size
+at every resolution.
+
+## Share images and meta tags
+
+`index.html` has Open Graph / Twitter tags. Image URLs must be absolute, so
+they use `%VITE_SITE_URL%` from `.env` (committed, not a secret; forks change
+it). `public/og-image.png` (1200×630) and the icons are rendered from our own
+templates by `npm run share-images`; the script refuses to write if Inter
+didn't load. Re-run it if the look of Kinetic Title changes.
+
+## UX conventions
+
+- Keyboard: **Space** = play/pause, **←/→** = step a frame (**Shift** = 1s).
+  Ignored while typing in a text field or while the export dialog is open.
+- The preview autoplays (a poster frame instead with `prefers-reduced-motion`).
+- An empty headline renders `HEADLINE_PLACEHOLDER` in previews/thumbnails and
+  blocks export with a message. Templates must still not crash on `''`.
+- Preview shows "Loading <font>…" if a font takes >150ms; `loadFont` gives up
+  after 4s and falls back to system fonts.
 
 ## Saved settings
 

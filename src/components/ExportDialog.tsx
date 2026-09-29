@@ -40,6 +40,9 @@ export function ExportDialog({ open, comp, onClose, onBusyChange }: ExportDialog
   const [quality, setQuality] = useState<ExportQuality>('1080p')
   const [plan, setPlan] = useState<VideoPlan | null | 'detecting'>('detecting')
   const [phase, setPhase] = useState<Phase>({ kind: 'setup' })
+  // Off by default: exports are clean unless the user opts in.
+  const [watermark, setWatermark] = useState(false)
+  const headlineEmpty = !comp.params.headline.trim()
 
   const stage = getStage(comp.aspect, comp.duration, comp.params.speed)
   const size = exportSize(stage, format, quality)
@@ -91,7 +94,7 @@ export function ExportDialog({ open, comp, onClose, onBusyChange }: ExportDialog
     let lastPaint = 0
     try {
       const result = await runExport({
-        comp,
+        comp: { ...comp, watermark },
         format,
         quality,
         plan: format === 'video' && plan !== 'detecting' ? plan : undefined,
@@ -184,9 +187,21 @@ export function ExportDialog({ open, comp, onClose, onBusyChange }: ExportDialog
               ))}
             </div>
           </div>
+          <label className="check">
+            <input type="checkbox" checked={watermark} onChange={(e) => setWatermark(e.target.checked)} />
+            <span>
+              Add a small “Made with Movly” watermark
+              <span className="check-sub">Optional. Helps other people find Movly.</span>
+            </span>
+          </label>
           <p className="export-summary">
             {size.width}×{size.height} · {exportFps(format)} fps · {frames} frames · {comp.duration.toFixed(1)}s
           </p>
+          {headlineEmpty && (
+            <p className="hint warn" role="alert">
+              Your headline is empty. Add one in the Text section before exporting.
+            </p>
+          )}
           {format === 'gif' && <p className="hint">GIFs use 256 colors, so soft gradients may band. Use video for best quality.</p>}
           {format === 'video' && plan && plan !== 'detecting' && plan.method === 'mediarecorder' && (
             <p className="hint">
@@ -205,7 +220,7 @@ export function ExportDialog({ open, comp, onClose, onBusyChange }: ExportDialog
               type="button"
               className="btn-primary"
               onClick={start}
-              disabled={format === 'video' && (plan === 'detecting' || plan === null)}
+              disabled={headlineEmpty || (format === 'video' && (plan === 'detecting' || plan === null))}
             >
               Export
             </button>
