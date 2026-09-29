@@ -36,6 +36,7 @@ approach or flag it instead of adding one.
 npm install       # install deps
 npm run dev       # local dev server
 npm run build     # typecheck (tsc -b) + production build into dist/
+npm test          # vitest unit tests (engine helpers, template registry)
 npm run preview   # serve the production build locally
 ```
 
@@ -43,16 +44,55 @@ npm run preview   # serve the production build locally
 
 ```
 src/
-  main.tsx            # React entry
-  App.tsx             # app shell: header, sidebar, preview, transport
-  timing.ts           # FPS, default duration, SS:FF timecode formatting
-  usePlayback.ts      # requestAnimationFrame playback clock (frame-based)
+  main.tsx              # React entry
+  App.tsx               # app state (template, params, loop) + shell
+  usePlayback.ts        # requestAnimationFrame playback clock (frame-based, loop/stop)
   components/
-    Header.tsx        # Movly branding
-    Sidebar.tsx       # template picker + customization controls (placeholder)
-    Preview.tsx       # 16:9 preview canvas
-    Transport.tsx     # play/pause, scrubber, timecode, Download
+    Header.tsx          # Movly branding
+    Sidebar.tsx         # template picker + customization controls
+    Preview.tsx         # <canvas> preview: DPR-aware sizing, font loading, renderFrame
+    Transport.tsx       # play/pause, loop, scrubber, SS:FF timecode, Download
+  engine/               # framework-free animation engine (no React imports)
+    types.ts            # Template, TemplateParams, TemplateColors
+    render.ts           # STAGE (1920×1080) + renderFrame()
+    timing.ts           # FPS (30), totalFrames(), frameToTime(), formatTimecode()
+    easing.ts           # quad/cubic/expo/back/elastic/bounce In/Out/InOut + linear
+    keyframes.ts        # tween() and interpolate() keyframe tracks
+    text.ts             # fontString, fitFontSize/fitText, wrapLines, drawRevealText, revealEnd
+    color.ts            # hexToRgb, withAlpha, mixColor
+    image.ts            # drawImageContain (logos)
+    fonts.ts            # FONTS list + loadFont() (canvas needs explicit font loading)
+    math.ts             # clamp, lerp, mapRange
+  templates/
+    index.ts            # TEMPLATES registry
+    cleanTitle.ts       # sample template
 ```
+
+## Animation engine
+
+- Everything renders on a single `<canvas>` at **30 fps**. Time is tracked in
+  frames; `frameToTime(frame, speed)` converts to template seconds.
+- Templates always draw on a **1920×1080 logical stage** (`STAGE`).
+  `renderFrame` scales that to the actual canvas size (preview at screen size ×
+  DPR, export at full resolution), so templates never deal with screen pixels.
+- **Speed** is applied by the engine: at speed 2 the composition has half as
+  many frames and `time` advances twice as fast. Templates just animate over
+  `[0, defaultDuration]`.
+- `draw()` must be a **pure function of `(time, params)`**: no state kept
+  between calls, no `Math.random()` without a fixed seed, no reliance on the
+  previous frame. Scrubbing, looping and frame-by-frame export depend on it.
+
+## Adding a template
+
+1. Create `src/templates/<name>.ts` exporting:
+   `id`, `name`, `category` (`TemplateCategory`), `defaultDuration` (s),
+   `defaultColors` (`{ bg, primary, accent }`) and
+   `draw(ctx, time, params)`.
+2. Register it in `src/templates/index.ts` (`TEMPLATES`).
+3. Use the engine helpers (`tween`, `interpolate`, easings, `drawRevealText`,
+   `fitText`) instead of hand-rolled timing math. Handle an empty `subline` and
+   a missing `logo`. Use `params.font` for all text.
+4. Check it by scrubbing through the whole timeline in the preview.
 
 ## Conventions
 

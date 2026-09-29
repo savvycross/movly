@@ -1,16 +1,27 @@
-import { FPS, formatTimecode } from '../timing'
+import { FPS, formatTimecode } from '../engine'
 
 interface TransportProps {
   frame: number
   totalFrames: number
   playing: boolean
+  loop: boolean
   onToggle: () => void
+  onToggleLoop: () => void
   onSeek: (frame: number) => void
   /** Omitted until the export pipeline exists; the button renders disabled. */
   onDownload?: () => void
 }
 
-export function Transport({ frame, totalFrames, playing, onToggle, onSeek, onDownload }: TransportProps) {
+export function Transport({
+  frame,
+  totalFrames,
+  playing,
+  loop,
+  onToggle,
+  onToggleLoop,
+  onSeek,
+  onDownload,
+}: TransportProps) {
   const lastFrame = totalFrames - 1
   const pct = lastFrame > 0 ? (frame / lastFrame) * 100 : 0
 
@@ -33,6 +44,19 @@ export function Transport({ frame, totalFrames, playing, onToggle, onSeek, onDow
             <path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z" />
           </svg>
         )}
+      </button>
+
+      <button
+        type="button"
+        className="btn-toggle"
+        onClick={onToggleLoop}
+        aria-pressed={loop}
+        aria-label="Loop"
+        title={loop ? 'Loop on' : 'Loop off'}
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M17 2l3 3-3 3M4 11V9a4 4 0 0 1 4-4h12M7 22l-3-3 3-3M20 13v2a4 4 0 0 1-4 4H4" />
+        </svg>
       </button>
 
       <input
