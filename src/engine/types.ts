@@ -12,8 +12,21 @@ export interface TemplateParams {
   /** CSS font-family name, e.g. "Inter". See `src/engine/fonts.ts`. */
   font: string
   logo?: CanvasImageSource | null
-  /** Playback speed multiplier (1 = normal). The engine already applies it to `time`. */
+  /** Animation speed multiplier (1 = normal). The engine already applies it to `time`. */
   speed: number
+}
+
+/**
+ * The surface a frame is drawn on. Templates must lay out relative to
+ * `width`/`height` (never hard-coded coordinates) so they work at every aspect ratio.
+ */
+export interface StageInfo {
+  /** Logical stage width in px (e.g. 1920 for 16:9, 1080 for 9:16). */
+  width: number
+  /** Logical stage height in px. */
+  height: number
+  /** Composition length in template seconds (user duration × speed). `time` runs 0 → duration. */
+  duration: number
 }
 
 export type TemplateCategory = 'Titles' | 'Lower thirds' | 'Logo reveals' | 'Social' | 'Transitions'
@@ -26,16 +39,15 @@ export interface Template {
   id: string
   name: string
   category: TemplateCategory
-  /** Length in seconds at speed 1. */
+  /** Suggested length in seconds; the user can change it with the duration slider. */
   defaultDuration: number
   defaultColors: TemplateColors
   /**
-   * Draws one frame onto a 1920×1080 logical stage (see `STAGE` in render.ts).
-   * Must be a pure function of (time, params): no internal state, no
-   * randomness without a fixed seed. That keeps scrubbing and export
-   * frame-accurate.
+   * Draws one frame. Must be a pure function of its arguments: no internal
+   * state, no unseeded randomness. That keeps scrubbing and export frame-accurate.
    *
-   * @param time Seconds since start, in [0, defaultDuration], already speed-adjusted.
+   * @param time Template seconds in [0, stage.duration], already speed-adjusted.
+   * @param stage Stage size and duration; lay everything out relative to it.
    */
-  draw(ctx: CanvasRenderingContext2D, time: number, params: TemplateParams): void
+  draw(ctx: CanvasRenderingContext2D, time: number, params: TemplateParams, stage: StageInfo): void
 }
