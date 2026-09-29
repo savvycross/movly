@@ -7,10 +7,16 @@ type Tick = (seconds: number) => void
 const subscribers = new Set<Tick>()
 let raf = 0
 let last = 0
+let paused = false
+
+/** Freezes all thumbnails (e.g. during export, so rendering gets the CPU). */
+export function setThumbsPaused(value: boolean) {
+  paused = value
+}
 
 function loop(now: number) {
   raf = requestAnimationFrame(loop)
-  if (now - last < 1000 / 24) return
+  if (paused || now - last < 1000 / 24) return
   last = now
   const seconds = now / 1000
   subscribers.forEach((fn) => fn(seconds))

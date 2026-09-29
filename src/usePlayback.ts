@@ -62,5 +62,7 @@ export function usePlayback(totalFrames: number, loop: boolean, fps: number = FP
     [lastFrame, commit],
   )
 
-  return { frame, playing, toggle, seek }
+  const pause = useCallback(() => setPlaying(false), [])
+
+  return { frame, playing, toggle, seek, pause }
 }

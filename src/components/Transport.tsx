@@ -8,8 +8,9 @@ interface TransportProps {
   onToggle: () => void
   onToggleLoop: () => void
   onSeek: (frame: number) => void
-  /** Omitted until the export pipeline exists; the button renders disabled. */
-  onDownload?: () => void
+  onDownload: () => void
+  /** Locks every control (e.g. while exporting). */
+  disabled?: boolean
 }
 
 export function Transport({
@@ -21,6 +22,7 @@ export function Transport({
   onToggleLoop,
   onSeek,
   onDownload,
+  disabled = false,
 }: TransportProps) {
   const lastFrame = totalFrames - 1
   const pct = lastFrame > 0 ? (frame / lastFrame) * 100 : 0
@@ -31,6 +33,7 @@ export function Transport({
         type="button"
         className="btn-icon"
         onClick={onToggle}
+        disabled={disabled}
         aria-label={playing ? 'Pause' : 'Play'}
         title={playing ? 'Pause (Space)' : 'Play (Space)'}
       >
@@ -50,6 +53,7 @@ export function Transport({
         type="button"
         className="btn-toggle"
         onClick={onToggleLoop}
+        disabled={disabled}
         aria-pressed={loop}
         aria-label="Loop"
         title={loop ? 'Loop on' : 'Loop off'}
@@ -67,6 +71,7 @@ export function Transport({
         step={1}
         value={frame}
         onChange={(e) => onSeek(Number(e.target.value))}
+        disabled={disabled}
         aria-label="Timeline"
         aria-valuetext={`${formatTimecode(frame)} of ${formatTimecode(totalFrames)}`}
         style={{ ['--pct' as string]: `${pct}%` }}
@@ -82,8 +87,8 @@ export function Transport({
         type="button"
         className="btn-primary"
         onClick={onDownload}
-        disabled={!onDownload}
-        title={onDownload ? 'Download video' : 'Video export is coming soon'}
+        disabled={disabled}
+        title="Export video or GIF"
       >
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19h14" />

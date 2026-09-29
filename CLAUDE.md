@@ -47,6 +47,8 @@ src/
   main.tsx              # React entry
   App.tsx               # app state: template, aspect, params, duration, colors, logo
   palettes.ts           # 8 ready-made color palettes
+  settings.ts           # remember last settings in localStorage (validated; never the logo)
+  limits.ts             # input limits shared by controls and settings validation
   thumbClock.ts         # one shared rAF loop for all template thumbnails
   usePlayback.ts        # requestAnimationFrame playback clock (frame-based, loop/stop)
   components/
@@ -55,6 +57,15 @@ src/
     TemplateThumb.tsx   # animated mini-preview (only animates while visible)
     Preview.tsx         # <canvas> preview: DPR-aware sizing, font loading, renderFrame
     Transport.tsx       # play/pause, loop, scrubber, SS:FF timecode, Download
+    ExportDialog.tsx    # format/quality, progress, cancel, download/share
+  export/
+    plan.ts             # pure: export sizes, frame counts, file names, codec choice
+    capabilities.ts     # probes WebCodecs encoders + MediaRecorder MIME types
+    frames.ts           # renders composition frames onto an offscreen export canvas
+    video.ts            # WebCodecs + Mediabunny path, MediaRecorder fallback
+    gif.ts, gif.worker.ts  # GIF via gifenc in a Web Worker (global palette)
+    mediabunny*.ts      # the only Mediabunny import sites (tree-shaken, lazy-loaded)
+    index.ts            # runExport(), detectVideoPlan()
   engine/               # framework-free animation engine (no React imports)
     types.ts            # Template, TemplateParams, StageInfo, TemplateColors
     render.ts           # ASPECT_RATIOS, getStage(), renderFrame()
@@ -107,6 +118,33 @@ Stages: **16:9 = 1920×1080, 1:1 = 1080×1080, 4:5 = 1080×1350, 9:16 = 1080×19
 - Keep all text inside the safe margins at rest. Only transitions may move text
   off-stage.
 - Shadows/glows: use `setGlow` (canvas shadows ignore the transform).
+
+## Export
+
+- Exports never record the live preview. Every frame is rendered offscreen at
+  export resolution with the same deterministic `draw()`, so slow devices
+  can't drop frames.
+- Video: **MP4/H.264 via WebCodecs** when `canEncodeVideo('avc')` passes,
+  otherwise **WebM (VP9/VP8/AV1) via WebCodecs**, muxed with Mediabunny.
+  If WebCodecs is missing, fall back to `canvas.captureStream` +
+  `MediaRecorder` (real-time, wall-clock timestamps, so frames may drop), then
+  remux to fix duration/seek metadata.
+- GIF: ≤720px wide, 15fps, one global 256-color palette sampled from 8 frames,
+  encoded in a worker. Delays alternate 6/7cs so total duration is exact.
+- Sizes: 1080p = full stage (e.g. 1080×1920); 720p = short side 720. Even
+  dimensions (H.264 requirement). File name: `movly-<template>-<ratio>.<ext>`.
+- Mediabunny is imported only via `src/export/mediabunny*.ts` with named
+  exports; import those lazily (`await import('./mediabunny')`) so the library
+  stays out of the main bundle.
+- Test locally: Playwright's Chromium has no H.264 encoder, so headless tests
+  produce WebM; real Chrome/Edge/Safari produce MP4.
+
+## Saved settings
+
+`src/settings.ts` stores template, text, colors, font, ratio, speed and
+duration under `movly:settings:v1`. Every field is validated on load and
+dropped if invalid. **Never store the logo** (user content, and too big). All
+storage access is wrapped in try/catch (private mode, quota).
 
 ## Adding a template
 

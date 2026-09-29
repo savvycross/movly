@@ -3,6 +3,7 @@ import { Header } from './components/Header'
 import { Sidebar } from './components/Sidebar'
 import { Preview } from './components/Preview'
 import { Transport } from './components/Transport'
+import { ExportDialog } from './components/ExportDialog'
 import { usePlayback } from './usePlayback'
 import {
   frameToTime,
@@ -13,6 +14,8 @@ import {
   type TemplateParams,
 } from './engine'
 import { TEMPLATES, getTemplate } from './templates'
+import { loadSettings, saveSettings } from './settings'
+import { setThumbsPaused } from './thumbClock'
 
 const DEFAULT_TEXT = {
   headline: 'Make it move',
@@ -20,19 +23,44 @@ const DEFAULT_TEXT = {
 }
 
 export default function App() {
-  const [templateId, setTemplateId] = useState(TEMPLATES[0].id)
+  // Last session's settings (validated); anything missing falls back to defaults.
+  const [saved] = useState(() => loadSettings(TEMPLATES.map((t) => t.id)))
+  const [templateId, setTemplateId] = useState(saved.templateId ?? TEMPLATES[0].id)
   const template = getTemplate(templateId)
-  const [aspect, setAspect] = useState<AspectRatio>('16:9')
-  const [duration, setDuration] = useState(template.defaultDuration)
+  const [aspect, setAspect] = useState<AspectRatio>(saved.aspect ?? '16:9')
+  const [duration, setDuration] = useState(saved.duration ?? template.defaultDuration)
   // Once the user picks colors they stick across template switches.
-  const [customColors, setCustomColors] = useState<TemplateColors | null>(null)
+  const [customColors, setCustomColors] = useState<TemplateColors | null>(saved.colors ?? null)
+  // The logo is intentionally never persisted.
   const [logo, setLogo] = useState<{ image: HTMLImageElement; name: string; url: string } | null>(null)
   const [params, setParams] = useState<Omit<TemplateParams, 'colors' | 'logo'>>(() => ({
-    ...DEFAULT_TEXT,
-    font: 'Inter',
-    speed: 1,
+    headline: saved.headline ?? DEFAULT_TEXT.headline,
+    subline: saved.subline ?? DEFAULT_TEXT.subline,
+    font: saved.font ?? 'Inter',
+    speed: saved.speed ?? 1,
   }))
   const [loop, setLoop] = useState(true)
+  const [exportOpen, setExportOpen] = useState(false)
+  const [exporting, setExporting] = useState(false)
+
+  // Remember settings (debounced so typing doesn't write on every keystroke).
+  useEffect(() => {
+    const id = setTimeout(
+      () =>
+        saveSettings({
+          templateId,
+          headline: params.headline,
+          subline: params.subline,
+          colors: customColors,
+          font: params.font,
+          aspect,
+          speed: params.speed,
+          duration,
+        }),
+      250,
+    )
+    return () => clearTimeout(id)
+  }, [templateId, params, customColors, aspect, duration])
 
   const fullParams = useMemo<TemplateParams>(
     () => ({ ...params, colors: customColors ?? template.defaultColors, logo: logo?.image ?? null }),
@@ -40,7 +68,7 @@ export default function App() {
   )
   const stage = useMemo(() => getStage(aspect, duration, params.speed), [aspect, duration, params.speed])
   const frames = totalFrames(duration)
-  const { frame, playing, toggle, seek } = usePlayback(frames, loop)
+  const { frame, playing, toggle, seek, pause } = usePlayback(frames, loop)
 
   const seekRef = useRef(seek)
   seekRef.current = seek
@@ -76,17 +104,26 @@ export default function App() {
     }
   }, [logo])
 
+  const openExport = useCallback(() => {
+    pause()
+    setExportOpen(true)
+  }, [pause])
+
+  // Freeze thumbnails while the dialog is open so exports get the CPU.
+  useEffect(() => setThumbsPaused(exportOpen), [exportOpen])
+
   // Space toggles playback (unless the user is typing in a field).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement
-      if (e.code !== 'Space' || target.closest('input, textarea, select, button, [contenteditable]')) return
+      if (exportOpen || e.code !== 'Space' || target.closest('input, textarea, select, button, [contenteditable], dialog'))
+        return
       e.preventDefault()
       toggle()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [toggle])
+  }, [toggle, exportOpen])
 
   return (
     <div className="app">
@@ -107,6 +144,7 @@ export default function App() {
           onLogoFile={onLogoFile}
           duration={duration}
           onDuration={setDuration}
+          disabled={exportOpen}
         />
         <main className="stage-area">
           <Preview template={template} params={fullParams} stage={stage} time={frameToTime(frame, params.speed)} />
@@ -118,10 +156,17 @@ export default function App() {
             onToggle={toggle}
             onToggleLoop={() => setLoop((l) => !l)}
             onSeek={seek}
-            // onDownload is wired up once in-browser video export lands.
+            onDownload={openExport}
+            disabled={exportOpen}
           />
         </main>
       </div>
+      <ExportDialog
+        open={exportOpen}
+        comp={{ template, params: fullParams, aspect, duration }}
+        onClose={() => !exporting && setExportOpen(false)}
+        onBusyChange={setExporting}
+      />
     </div>
   )
 }
