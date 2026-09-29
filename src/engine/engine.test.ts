@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { easings } from './easing'
 import { interpolate, tween } from './keyframes'
-import { formatTimecode, frameToTime, totalFrames } from './timing'
-import { hexToRgb, mixColor, withAlpha } from './color'
+import { fitTimeline, formatTimecode, frameToTime, totalFrames } from './timing'
+import { contrastRatio, hexToRgb, mixColor, readableOn, rotateHue, withAlpha } from './color'
+import { hash } from './math'
+import { getStage } from './render'
 import { revealEnd } from './text'
 import { TEMPLATES } from '../templates'
 
@@ -66,11 +68,16 @@ describe('timing', () => {
     expect(formatTimecode(150)).toBe('05:00')
   })
 
-  it('scales frame count and time by speed', () => {
-    const t = TEMPLATES[0]
-    expect(totalFrames(t, 1)).toBe(t.defaultDuration * 30)
-    expect(totalFrames(t, 2)).toBe(t.defaultDuration * 15)
+  it('frame count follows duration; speed scales template time', () => {
+    expect(totalFrames(5)).toBe(150)
+    expect(totalFrames(2.5)).toBe(75)
     expect(frameToTime(30, 2)).toBe(2)
+    expect(getStage('9:16', 5, 2)).toEqual({ width: 1080, height: 1920, duration: 10 })
+  })
+
+  it('fitTimeline compresses short durations and keeps long ones', () => {
+    expect(fitTimeline(1, 2.5, 5)).toEqual({ t: 2, D: 5 })
+    expect(fitTimeline(1, 8, 5)).toEqual({ t: 1, D: 8 })
   })
 })
 
@@ -79,7 +86,18 @@ describe('color', () => {
     expect(hexToRgb('#fff')).toEqual([255, 255, 255])
     expect(hexToRgb('#8b5cf6')).toEqual([139, 92, 246])
     expect(withAlpha('#000000', 0.5)).toBe('rgba(0, 0, 0, 0.5)')
-    expect(mixColor('#000000', '#ffffff', 0.5)).toBe('rgb(128, 128, 128)')
+    expect(mixColor('#000000', '#ffffff', 0.5)).toBe('#808080')
+  })
+
+  it('picks the most readable color and rotates hue', () => {
+    expect(contrastRatio('#000000', '#ffffff')).toBeCloseTo(21)
+    expect(readableOn('#ffffff', '#eeeeee', '#111111')).toBe('#111111')
+    expect(rotateHue('#ff0000', 120)).toBe('#00ff00')
+  })
+
+  it('hash is deterministic and in [0, 1)', () => {
+    expect(hash(42)).toBe(hash(42))
+    for (let i = 0; i < 100; i++) expect(hash(i)).toBeGreaterThanOrEqual(0), expect(hash(i)).toBeLessThan(1)
   })
 })
 
@@ -90,13 +108,14 @@ describe('revealEnd', () => {
   })
 })
 
-describe('templates', () => {
-  it('have unique ids and valid metadata', () => {
+describe('template registry', () => {
+  it('has unique ids and valid metadata', () => {
     const ids = TEMPLATES.map((t) => t.id)
     expect(new Set(ids).size).toBe(ids.length)
     for (const t of TEMPLATES) {
       expect(t.defaultDuration).toBeGreaterThan(0)
       expect(typeof t.draw).toBe('function')
+      for (const c of Object.values(t.defaultColors)) expect(c).toMatch(/^#[0-9a-f]{6}$/i)
     }
   })
 })

@@ -10,7 +10,7 @@
   --accent-2: #22d3ee;
   --accent-grad: linear-gradient(135deg, var(--accent), var(--accent-2));
   --radius: 12px;
-  --sidebar-w: 320px;
+  --sidebar-w: 340px;
   --header-h: 56px;
 
   color-scheme: dark;
@@ -147,26 +147,32 @@ button {
   color: var(--text-faint);
 }
 
-/* ---------- Template picker ---------- */
+/* ---------- Sidebar controls ---------- */
 
-.template-list {
+.panel-head {
   display: flex;
-  flex-direction: column;
+  align-items: baseline;
+  justify-content: space-between;
   gap: 8px;
+}
+
+.template-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .template-card {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 8px;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg-elev-2);
   text-align: left;
   cursor: pointer;
-  transition: border-color 0.12s ease;
+  transition: border-color 0.12s ease, transform 0.12s ease;
 }
 
 .template-card:hover {
@@ -178,27 +184,259 @@ button {
   box-shadow: 0 0 0 1px var(--accent);
 }
 
-.template-swatch {
-  flex: none;
-  width: 64px;
-  aspect-ratio: 16 / 9;
-  border-radius: 6px;
+.thumb {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 16 / 10;
+  container-type: size;
+  border-radius: 8px;
+  background: #0a0a0e;
+  overflow: hidden;
 }
 
-.template-meta {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
+.thumb-canvas {
+  display: block;
+  /* Contain the stage's aspect ratio inside the fixed card box. */
+  width: min(100cqw, 100cqh * var(--arw) / var(--arh));
+  aspect-ratio: var(--arw) / var(--arh);
 }
 
 .template-name {
+  padding: 0 2px 2px;
+  font-size: 0.8rem;
   font-weight: 600;
-  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.template-sub {
+.segmented {
+  display: grid;
+  gap: 6px;
+}
+
+.segmented.four {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.seg {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 8px 4px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-elev-2);
   font-size: 0.78rem;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.seg:hover {
+  border-color: #3a3a48;
+}
+
+.seg[aria-checked='true'] {
+  border-color: var(--accent);
+  color: var(--text);
+  background: rgba(139, 92, 246, 0.12);
+}
+
+.ratio-icon {
+  display: block;
+  border: 2px solid currentColor;
+  border-radius: 3px;
+}
+
+.font-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.font-option {
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.field:last-child {
+  margin-bottom: 0;
+}
+
+.field-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.field-label output {
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  color: var(--text);
+}
+
+.input {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-elev-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 16px; /* prevents iOS zoom on focus */
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.color-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.color-field {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.color-field input {
+  width: 100%;
+  height: 36px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-elev-2);
+  cursor: pointer;
+}
+
+.color-field input::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.color-field input::-webkit-color-swatch {
+  border: none;
+  border-radius: 7px;
+}
+
+.color-field input::-moz-color-swatch {
+  border: none;
+  border-radius: 7px;
+}
+
+.palette-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.palette {
+  display: flex;
+  height: 28px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  outline: 1px solid var(--border);
+}
+
+.palette span {
+  flex: 1;
+}
+
+.palette span:first-child {
+  flex: 2;
+}
+
+.palette[aria-checked='true'] {
+  border-color: var(--text);
+}
+
+.logo-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.file-btn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-elev-2);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.file-btn:hover {
+  border-color: #3a3a48;
+}
+
+input:focus-visible + .file-btn,
+.visually-hidden:focus-visible ~ .file-btn {
+  outline: 2px solid var(--accent-2);
+}
+
+.logo-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.link-btn {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent-2);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.hint {
+  margin: 8px 0 0;
+  font-size: 0.75rem;
   color: var(--text-faint);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.slider {
+  width: 100%;
+  accent-color: var(--accent);
 }
 
 /* ---------- Preview ---------- */
@@ -225,9 +463,11 @@ button {
 
 .canvas {
   position: relative;
-  /* Largest 16:9 box that fits the preview area. */
-  width: min(100cqw, 100cqh * 16 / 9);
-  aspect-ratio: 16 / 9;
+  /* Largest box of the stage's aspect ratio that fits the preview area. */
+  --arw: 16;
+  --arh: 9;
+  width: min(100cqw, 100cqh * var(--arw) / var(--arh));
+  aspect-ratio: var(--arw) / var(--arh);
   border-radius: var(--radius);
   overflow: hidden;
   background:
@@ -446,7 +686,8 @@ button {
   }
 
   .canvas {
-    width: 100%;
+    width: min(100%, 62dvh * var(--arw) / var(--arh));
+    margin: 0 auto;
   }
 
   .sidebar {

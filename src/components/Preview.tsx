@@ -1,29 +1,23 @@
-import { useEffect, useRef, useState } from 'react'
-import { STAGE, loadFont, renderFrame, type Template, type TemplateParams } from '../engine'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { loadFont, renderFrame, type StageInfo, type Template, type TemplateParams } from '../engine'
 
 interface PreviewProps {
   template: Template
   params: TemplateParams
+  stage: StageInfo
   /** Speed-adjusted template time in seconds. */
   time: number
 }
 
-export function Preview({ template, params, time }: PreviewProps) {
+export function Preview({ template, params, stage, time }: PreviewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [size, setSize] = useState({ width: 0, height: 0 })
+  const [cssWidth, setCssWidth] = useState(0)
   const [fontVersion, setFontVersion] = useState(0)
 
-  // Match the canvas backing store to its on-screen size × devicePixelRatio,
-  // capped at the stage resolution (more pixels than export gains nothing).
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-    const ro = new ResizeObserver(([entry]) => {
-      const dpr = window.devicePixelRatio || 1
-      const width = Math.min(STAGE.width, Math.round(entry.contentRect.width * dpr))
-      const height = Math.round((width * STAGE.height) / STAGE.width)
-      setSize((s) => (s.width === width && s.height === height ? s : { width, height }))
-    })
+    const ro = new ResizeObserver(([entry]) => setCssWidth(entry.contentRect.width))
     ro.observe(canvas)
     return () => ro.disconnect()
   }, [])
@@ -40,15 +34,20 @@ export function Preview({ template, params, time }: PreviewProps) {
   useEffect(() => {
     const canvas = canvasRef.current
     const ctx = canvas?.getContext('2d')
-    if (!canvas || !ctx || !size.width) return
-    if (canvas.width !== size.width) canvas.width = size.width
-    if (canvas.height !== size.height) canvas.height = size.height
-    renderFrame(ctx, template, time, params)
-  }, [template, params, time, size, fontVersion])
+    if (!canvas || !ctx || !cssWidth) return
+    // Backing store = on-screen size × DPR, capped at the stage resolution.
+    const dpr = window.devicePixelRatio || 1
+    const width = Math.min(stage.width, Math.round(cssWidth * dpr))
+    const height = Math.round((width * stage.height) / stage.width)
+    if (canvas.width !== width) canvas.width = width
+    if (canvas.height !== height) canvas.height = height
+    renderFrame(ctx, template, time, params, stage)
+  }, [template, params, stage, time, cssWidth, fontVersion])
 
+  const style = { '--arw': stage.width, '--arh': stage.height } as CSSProperties
   return (
     <div className="preview">
-      <div className="canvas">
+      <div className="canvas" style={style}>
         <canvas ref={canvasRef} aria-label={`${template.name} preview`} />
       </div>
     </div>

@@ -2,7 +2,7 @@
  * Fonts offered to users. They're served free by Google Fonts (linked in
  * index.html); keep this list and that <link> in sync.
  */
-export const FONTS = ['Inter', 'Montserrat', 'Bebas Neue', 'Playfair Display'] as const
+export const FONTS = ['Inter', 'Montserrat', 'Bebas Neue', 'Playfair Display', 'Space Mono'] as const
 
 const WEIGHTS = [400, 500, 700, 800]
 
