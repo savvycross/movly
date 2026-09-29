@@ -1,21 +1,29 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { FPS } from './timing'
+import { FPS } from './engine'
 
 /**
  * Frame-accurate playback clock driven by requestAnimationFrame.
- * `totalFrames` is the composition length; playback loops at the end.
+ * `totalFrames` is the composition length. With `loop` it wraps to 0 at the
+ * end, otherwise it stops on the last frame.
  */
-export function usePlayback(totalFrames: number, fps: number = FPS) {
+export function usePlayback(totalFrames: number, loop: boolean, fps: number = FPS) {
   const [frame, setFrame] = useState(0)
   const [playing, setPlaying] = useState(false)
   const frameRef = useRef(0)
   // Wall-clock anchor for the current play run; reset on seek so playback resumes from the new frame.
   const anchorRef = useRef<{ time: number; frame: number } | null>(null)
+  const lastFrame = totalFrames - 1
 
   const commit = useCallback((f: number) => {
     frameRef.current = f
     setFrame(f)
   }, [])
+
+  // Keep the playhead in range when the composition gets shorter (e.g. speed change).
+  useEffect(() => {
+    if (frameRef.current > lastFrame) commit(lastFrame)
+    anchorRef.current = null
+  }, [lastFrame, commit])
 
   useEffect(() => {
     anchorRef.current = null
@@ -24,22 +32,34 @@ export function usePlayback(totalFrames: number, fps: number = FPS) {
     const tick = (now: number) => {
       if (!anchorRef.current) anchorRef.current = { time: now, frame: frameRef.current }
       const elapsed = (now - anchorRef.current.time) / 1000
-      const next = Math.floor(anchorRef.current.frame + elapsed * fps) % totalFrames
+      let next = Math.floor(anchorRef.current.frame + elapsed * fps)
+      if (next > lastFrame) {
+        if (!loop) {
+          commit(lastFrame)
+          setPlaying(false)
+          return
+        }
+        next %= totalFrames
+      }
       if (next !== frameRef.current) commit(next)
       raf = requestAnimationFrame(tick)
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [playing, totalFrames, fps, commit])
+  }, [playing, totalFrames, lastFrame, loop, fps, commit])
 
-  const toggle = useCallback(() => setPlaying((p) => !p), [])
+  const toggle = useCallback(() => {
+    // Pressing play on the final frame restarts from the top.
+    if (!playing && frameRef.current >= lastFrame) commit(0)
+    setPlaying(!playing)
+  }, [playing, lastFrame, commit])
 
   const seek = useCallback(
     (f: number) => {
       anchorRef.current = null
-      commit(Math.min(Math.max(0, Math.round(f)), totalFrames - 1))
+      commit(Math.min(Math.max(0, Math.round(f)), lastFrame))
     },
-    [totalFrames, commit],
+    [lastFrame, commit],
   )
 
   return { frame, playing, toggle, seek }

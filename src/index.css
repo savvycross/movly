@@ -147,6 +147,60 @@ button {
   color: var(--text-faint);
 }
 
+/* ---------- Template picker ---------- */
+
+.template-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.template-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elev-2);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.12s ease;
+}
+
+.template-card:hover {
+  border-color: #3a3a48;
+}
+
+.template-card[aria-selected='true'] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.template-swatch {
+  flex: none;
+  width: 64px;
+  aspect-ratio: 16 / 9;
+  border-radius: 6px;
+}
+
+.template-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.template-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.template-sub {
+  font-size: 0.78rem;
+  color: var(--text-faint);
+}
+
 /* ---------- Preview ---------- */
 
 .stage-area {
@@ -184,36 +238,10 @@ button {
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
 }
 
-.canvas-empty {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  text-align: center;
-  padding: 16px;
-}
-
-.canvas-empty-title {
-  font-weight: 600;
-  color: var(--text-dim);
-}
-
-.canvas-empty-sub {
-  font-size: 0.85rem;
-  color: var(--text-faint);
-}
-
-.canvas-progress {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 3px;
-  background: var(--accent-grad);
-  transform-origin: left;
+.canvas canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 /* ---------- Transport ---------- */
@@ -251,6 +279,37 @@ button {
   width: 20px;
   height: 20px;
   fill: currentColor;
+}
+
+.btn-toggle {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+}
+
+.btn-toggle:hover {
+  background: var(--bg-elev-2);
+}
+
+.btn-toggle[aria-pressed='true'] {
+  color: var(--accent-2);
+}
+
+.btn-toggle svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .scrubber {
@@ -398,7 +457,11 @@ button {
 
   .transport {
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 8px;
+  }
+
+  .btn-primary {
+    padding: 0 14px;
   }
 
   .scrubber {
