@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Header } from './components/Header'
 import { Hero } from './components/Hero'
+import { TokenSection } from './components/TokenSection'
+import { Footer } from './components/Footer'
+import { SITE } from './siteConfig'
 import { Sidebar } from './components/Sidebar'
 import { Preview } from './components/Preview'
 import { Transport } from './components/Transport'
@@ -253,54 +256,59 @@ export default function App() {
 
   return (
     <div className="app">
-      <Header />
-      <Hero onStart={startCreating} />
-      <div className="workspace" id="editor">
-        <Sidebar
-          templates={TEMPLATES}
-          selectedId={template.id}
-          onSelectTemplate={selectTemplate}
-          aspect={aspect}
-          onAspect={setAspect}
-          params={fullParams}
-          onParams={patchParams}
-          customColors={customColors}
-          onColors={setCustomColors}
-          onResetColors={resetColors}
-          logoName={logo?.name ?? null}
-          onLogoFile={onLogoFile}
-          duration={duration}
-          onDuration={setDuration}
-          disabled={exportOpen}
-          onApplySuggestion={applySuggestion}
-          audio={audio}
-          onAudio={patchAudio}
-          upload={upload && { name: upload.name, length: upload.buffer.duration, offset: uploadOffset ?? 0 }}
-          uploadError={uploadError}
-          onUploadFile={onUploadFile}
-          onUploadOffset={onUploadOffset}
-        />
-        <main className="stage-area">
-          <Preview
-            template={template}
-            params={renderParams}
-            stage={stage}
-            time={frameToTime(frame, params.speed)}
-            onEnableSound={audioPlan && !previewAudio.unlocked && playing ? enableSound : undefined}
-          />
-          <Transport
-            frame={frame}
-            totalFrames={frames}
-            playing={playing}
-            loop={loop}
-            onToggle={userToggle}
-            onToggleLoop={() => setLoop((l) => !l)}
-            onSeek={seek}
-            onDownload={openExport}
+      {/* The editor fills the first screen; optional token info and the footer sit below it. */}
+      <div className="screen">
+        <Header />
+        <Hero onStart={startCreating} />
+        <div className="workspace" id="editor">
+          <Sidebar
+            templates={TEMPLATES}
+            selectedId={template.id}
+            onSelectTemplate={selectTemplate}
+            aspect={aspect}
+            onAspect={setAspect}
+            params={fullParams}
+            onParams={patchParams}
+            customColors={customColors}
+            onColors={setCustomColors}
+            onResetColors={resetColors}
+            logoName={logo?.name ?? null}
+            onLogoFile={onLogoFile}
+            duration={duration}
+            onDuration={setDuration}
             disabled={exportOpen}
+            onApplySuggestion={applySuggestion}
+            audio={audio}
+            onAudio={patchAudio}
+            upload={upload && { name: upload.name, length: upload.buffer.duration, offset: uploadOffset ?? 0 }}
+            uploadError={uploadError}
+            onUploadFile={onUploadFile}
+            onUploadOffset={onUploadOffset}
           />
-        </main>
+          <main className="stage-area">
+            <Preview
+              template={template}
+              params={renderParams}
+              stage={stage}
+              time={frameToTime(frame, params.speed)}
+              onEnableSound={audioPlan && !previewAudio.unlocked && playing ? enableSound : undefined}
+            />
+            <Transport
+              frame={frame}
+              totalFrames={frames}
+              playing={playing}
+              loop={loop}
+              onToggle={userToggle}
+              onToggleLoop={() => setLoop((l) => !l)}
+              onSeek={seek}
+              onDownload={openExport}
+              disabled={exportOpen}
+            />
+          </main>
+        </div>
       </div>
+      {SITE.token && <TokenSection token={SITE.token} />}
+      <Footer xUrl={SITE.xUrl} telegramUrl={SITE.telegramUrl} />
       <ExportDialog
         open={exportOpen}
         comp={{ template, params: fullParams, aspect, duration }}

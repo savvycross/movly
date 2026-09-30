@@ -38,7 +38,7 @@ npm run dev       # local dev server
 npm run build     # typecheck (tsc -b) + production build into dist/
 npm test          # vitest unit tests (engine helpers, template registry)
 npm run preview   # serve the production build locally
-npm run share-images  # regenerate public/og-image.png + icons (needs Playwright Chromium)
+npm run share-images  # regenerate public/ share images + brand/ logos (needs Playwright Chromium)
 ```
 
 ## Project layout
@@ -50,6 +50,7 @@ src/
   palettes.ts           # 8 ready-made color palettes
   settings.ts           # remember last settings in localStorage (validated; never the logo)
   limits.ts             # input limits, headline placeholder (withHeadlinePlaceholder)
+  siteConfig.ts         # validated VITE_* token/social config (hides UI when unset)
   audio/
     types.ts            # AudioSettings, AudioPlan, BeatNote, PlannedSfx
     beats.ts            # 4 generated beat loops (chill, hype, corporate, minimal) as note lists
@@ -72,6 +73,8 @@ src/
     Preview.tsx         # <canvas> preview: DPR-aware sizing, font loading, renderFrame
     Transport.tsx       # play/pause, loop, scrubber, SS:FF timecode, Download
     ExportDialog.tsx    # format/quality, progress, cancel, download/share
+    TokenSection.tsx    # optional $MOVLY panel below the editor (address, copy, trade, explorer)
+    Footer.tsx          # tagline + X / Telegram links (each only if configured)
   export/
     plan.ts             # pure: export sizes, frame counts, file names, codec choice
     capabilities.ts     # probes WebCodecs encoders + MediaRecorder MIME types
@@ -212,6 +215,51 @@ they use `%VITE_SITE_URL%` from `.env` (committed, not a secret; forks change
 it). `public/og-image.png` (1200×630) and the icons are rendered from our own
 templates by `npm run share-images`; the script refuses to write if Inter
 didn't load. Re-run it if the look of Kinetic Title changes.
+
+## Token & community links
+
+Movly is and stays **free and fully usable without the token**. Never gate,
+limit, watermark or slow down anything based on the token, and never add
+wallet connections, price feeds or trading to the app. The token section is
+information only, below the editor.
+
+All of it is configured in `.env` (committed; these are public values, not
+secrets) and read at **build time** by `src/siteConfig.ts`:
+
+| Variable | What to put there | Effect when empty |
+|---|---|---|
+| `VITE_TOKEN_TICKER` | `MOVLY` (shown as `$MOVLY`) | falls back to `MOVLY` |
+| `VITE_TOKEN_ADDRESS` | the contract address, `0x` + 40 hex chars | **token section + header link hidden** |
+| `VITE_TOKEN_URL` | the launchpad/trade page (https) | no Trade button |
+| `VITE_EXPLORER_URL` | explorer base URL; link = `<base>/token/<address>` | no explorer link |
+| `VITE_X_URL` | e.g. `https://x.com/<handle>` | no X link in footer |
+| `VITE_TELEGRAM_URL` | e.g. `https://t.me/<group>` | no Telegram link in footer |
+
+Invalid values are ignored rather than shown: a malformed address hides the
+whole section, and any link that isn't `https://` is dropped.
+
+**After launch:**
+
+1. Copy the contract address from the launchpad **and** confirm it on the
+   explorer (same chain, correct ticker). Paste it into `VITE_TOKEN_ADDRESS`.
+2. Set `VITE_TOKEN_URL` to the token's launchpad page.
+3. Check `VITE_EXPLORER_URL` against Robinhood Chain's official docs (it was
+   pre-filled with `https://robinhoodchain.blockscout.com` from a web search
+   and could not be verified from the build sandbox). Open
+   `<base>/token/<address>` in a browser and make sure it shows the token.
+4. Fill `VITE_X_URL` / `VITE_TELEGRAM_URL`.
+5. `npm test && npm run build`, then `npm run preview` and check the section,
+   the Copy button and every link. Push to `main` to deploy.
+
+To change or remove anything later, edit `.env` and push; clearing
+`VITE_TOKEN_ADDRESS` hides the section again. The disclaimer text in
+`TokenSection.tsx` must stay visible whenever the section is shown.
+
+**Brand images** (`npm run share-images`) are written to `brand/`:
+`token-logo.png` (1000×1000, for the launchpad/explorer; readable at 16px and
+in a circle crop), `x-profile.png` (400×400), `x-banner.png` (1500×500, text
+kept clear of X's profile-photo overlap), `telegram-group.png` (640×640). They
+use the same mark as `favicon.svg` and our own templates and fonts.
 
 ## UX conventions
 

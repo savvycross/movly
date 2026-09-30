@@ -51,7 +51,7 @@ button {
 
 /* ---------- App shell ---------- */
 
-.app {
+.screen {
   display: flex;
   flex-direction: column;
   height: 100dvh;
@@ -651,7 +651,7 @@ input:focus-visible + .file-btn,
 /* ---------- Mobile ---------- */
 
 @media (max-width: 860px) {
-  .app {
+  .screen {
     height: auto;
     min-height: 100dvh;
   }
@@ -1208,4 +1208,130 @@ a.btn-primary {
 
 .sound-line.muted {
   color: var(--text-dim);
+}
+
+/* ---------- Token + footer ---------- */
+
+.header-token {
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+}
+
+.header-token:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.token {
+  padding: 32px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+  scroll-margin-top: 16px;
+}
+
+.token-card {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elev);
+}
+
+.token-card h2 {
+  margin: 0 0 14px;
+  font-size: 1.05rem;
+}
+
+.token-address-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+}
+
+.token-label {
+  font-size: 0.75rem;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.token-address {
+  flex: 1 1 260px;
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--bg-elev-2);
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.82rem;
+  /* Show the whole address, never truncated, so people can verify it. */
+  word-break: break-all;
+  user-select: all;
+}
+
+.token-copy {
+  flex: none;
+  min-width: 88px;
+}
+
+.token-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.token-links a {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.token-disclaimer {
+  margin: 16px 0 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--text-faint);
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 24px;
+  border-top: 1px solid var(--border);
+  font-size: 0.8rem;
+  color: var(--text-faint);
+}
+
+.footer-links {
+  display: flex;
+  gap: 16px;
+}
+
+.footer-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-dim);
+  text-decoration: none;
+}
+
+.footer-links a:hover {
+  color: var(--text);
+}
+
+.footer-links svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
 }
