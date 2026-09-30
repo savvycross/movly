@@ -1,5 +1,8 @@
 import { createExportCanvas, drawCompositionFrame, nextTask, throwIfAborted, type Composition } from './frames'
 import { VIDEO_FPS, type ExportQuality, type VideoCodecId, type VideoPlan } from './plan'
+import { pickAudioCodec, type AudioCodecId } from './audioCodec'
+import { schedulePlan } from '../audio/synth'
+import type { AudioPlan } from '../audio/types'
 
 export interface VideoExportOptions {
   comp: Composition
@@ -10,11 +13,18 @@ export interface VideoExportOptions {
   frames: number
   signal?: AbortSignal
   onProgress?: (fraction: number) => void
+  /** Soundtrack rendered offline (WebCodecs path), exactly the clip length. */
+  audio?: AudioBuffer | null
+  /** Needed by the MediaRecorder path, which mixes audio live. */
+  audioPlan?: AudioPlan | null
+  audioUpload?: AudioBuffer | null
 }
 
 export interface EncodedFile {
   blob: Blob
   extension: string
+  /** Audio codec in the file, or null if silent. */
+  audioCodec: AudioCodecId | null
 }
 
 const MIME = { mp4: 'video/mp4', webm: 'video/webm' } as const
@@ -38,8 +48,10 @@ async function exportWithWebCodecs({
   frames,
   signal,
   onProgress,
+  audio,
 }: VideoExportOptions & { plan: Extract<VideoPlan, { method: 'webcodecs' }> }): Promise<EncodedFile> {
   const mb = await import('./mediabunny')
+  const audioCodec = audio ? await pickAudioCodec(plan.container) : null
   const { canvas, ctx } = createExportCanvas(width, height)
   const format = plan.container === 'mp4' ? new mb.Mp4OutputFormat({ fastStart: 'in-memory' }) : new mb.WebMOutputFormat()
   const output = new mb.Output({ format, target: new mb.BufferTarget() })
@@ -49,9 +61,14 @@ async function exportWithWebCodecs({
     keyFrameInterval: 1,
   })
   output.addVideoTrack(source, { frameRate: VIDEO_FPS })
+  const audioSource = audio && audioCodec ? new mb.AudioBufferSource({ codec: audioCodec, quality: mb.QUALITY_HIGH }) : null
+  if (audioSource) output.addAudioTrack(audioSource)
 
   try {
     await output.start()
+    // Feed audio concurrently: the muxer interleaves it with video as frames arrive.
+    const audioDone = audioSource ? audioSource.add(audio!).then(() => audioSource.close()) : Promise.resolve()
+    audioDone.catch(() => {})
     for (let i = 0; i < frames; i++) {
       throwIfAborted(signal)
       drawCompositionFrame(ctx, comp, i, VIDEO_FPS)
@@ -61,6 +78,8 @@ async function exportWithWebCodecs({
       if (i % 3 === 0) await nextTask()
     }
     throwIfAborted(signal)
+    source.close()
+    await audioDone
     await output.finalize()
   } catch (err) {
     if (output.state !== 'finalized' && output.state !== 'canceled') await output.cancel().catch(() => {})
@@ -69,7 +88,7 @@ async function exportWithWebCodecs({
   onProgress?.(1)
   const buffer = output.target.buffer
   if (!buffer) throw new Error('Encoder produced no data.')
-  return { blob: new Blob([buffer], { type: MIME[plan.container] }), extension: plan.container }
+  return { blob: new Blob([buffer], { type: MIME[plan.container] }), extension: plan.container, audioCodec: audioSource ? audioCodec : null }
 }
 
 const sleepUntil = (at: number) => new Promise((r) => setTimeout(r, Math.max(0, at - performance.now())))
@@ -89,12 +108,24 @@ async function exportWithMediaRecorder({
   frames,
   signal,
   onProgress,
+  audioPlan,
+  audioUpload,
 }: VideoExportOptions & { plan: Extract<VideoPlan, { method: 'mediarecorder' }> }): Promise<EncodedFile> {
   const { canvas, ctx } = createExportCanvas(width, height)
   const stream = canvas.captureStream(0)
   const track = stream.getVideoTracks()[0] as CanvasCaptureMediaStreamTrack
+
+  // Audio is mixed live into the recording (MediaRecorder records in real time anyway).
+  const audioCtx = audioPlan ? new AudioContext({ sampleRate: 48_000 }) : null
+  const audioDest = audioCtx ? audioCtx.createMediaStreamDestination() : null
+  if (audioDest) stream.addTrack(audioDest.stream.getAudioTracks()[0])
+  const withAudio = (type: string) => {
+    const base = type.split(';')[0]
+    const candidates = base === 'video/mp4' ? [`${base};codecs=avc1,mp4a.40.2`, base] : [`${base};codecs=vp9,opus`, `${base};codecs=vp8,opus`, base]
+    return candidates.find((c) => MediaRecorder.isTypeSupported(c)) ?? type
+  }
   const recorder = new MediaRecorder(stream, {
-    mimeType: plan.mimeType,
+    mimeType: audioDest ? withAudio(plan.mimeType) : plan.mimeType,
     videoBitsPerSecond: quality === '1080p' ? 8_000_000 : 5_000_000,
   })
   const chunks: Blob[] = []
@@ -107,8 +138,10 @@ async function exportWithMediaRecorder({
   const frameMs = 1000 / VIDEO_FPS
   try {
     drawCompositionFrame(ctx, comp, 0, VIDEO_FPS)
+    if (audioCtx) await audioCtx.resume()
     recorder.start(250)
     const t0 = performance.now()
+    if (audioCtx && audioDest && audioPlan) schedulePlan(audioCtx, audioDest, audioPlan, { from: 0, at: audioCtx.currentTime, upload: audioUpload })
     for (let i = 0; i < frames; i++) {
       throwIfAborted(signal)
       await sleepUntil(t0 + i * frameMs)
@@ -121,13 +154,14 @@ async function exportWithMediaRecorder({
     if (recorder.state !== 'inactive') recorder.stop()
     await stopped.catch(() => {})
     track.stop()
+    await audioCtx?.close().catch(() => {})
   }
   throwIfAborted(signal)
   const recorded = new Blob(chunks, { type: plan.mimeType.split(';')[0] })
   // Recorded files often lack a duration/seek index; remuxing (no re-encode) fixes that.
   const blob = await remux(recorded, plan.container).catch(() => recorded)
   onProgress?.(1)
-  return { blob, extension: plan.container }
+  return { blob, extension: plan.container, audioCodec: audioDest ? (plan.container === 'mp4' ? 'aac' : 'opus') : null }
 }
 
 async function remux(blob: Blob, container: 'mp4' | 'webm'): Promise<Blob> {

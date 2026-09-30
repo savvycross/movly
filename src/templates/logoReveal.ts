@@ -18,6 +18,8 @@ import {
   type TemplateCategory,
   type TemplateColors,
   type TemplateParams,
+  cuesToStageTime,
+  type SoundEvent,
 } from '../engine'
 import { outro, paintBackdrop, stack } from './shared'
 
@@ -161,4 +163,19 @@ export function draw(ctx: CanvasRenderingContext2D, time: number, params: Templa
     ctx.fillStyle = withAlpha(colors.primary, 0.65)
     drawRevealLines(ctx, sub, L.cx, subY, t, { mode: 'word', start: 1.6, stagger: fitStagger(subline, 'word', 0.7, 0.07), duration: 0.6, align: 'center' })
   }
+}
+
+/** Riser while the rings draw, impact + pop as the mark lands, soft shine, whoosh out. */
+export function sound(_ctx: CanvasRenderingContext2D, params: TemplateParams, stage: StageInfo): SoundEvent[] {
+  const { D } = fitTimeline(0, stage.duration, defaultDuration)
+  const cues: SoundEvent[] = [
+    { time: 0.05, kind: 'riser', duration: 0.55, gain: 0.7 },
+    { time: 0.6, kind: 'impact', gain: 1 },
+    { time: 0.62, kind: 'pop', gain: 0.6, pitch: 1.2 },
+    { time: 1.1, kind: 'whoosh', gain: 0.35, pitch: 1.5 },
+    { time: 1.35, kind: 'whoosh', gain: 0.25, pitch: 2 },
+  ]
+  if (params.subline.trim()) cues.push({ time: 1.6, kind: 'click', gain: 0.4 })
+  cues.push({ time: D - 0.7, kind: 'whoosh', gain: 0.6 })
+  return cuesToStageTime(cues, stage.duration, defaultDuration)
 }

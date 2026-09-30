@@ -7,9 +7,11 @@ interface PreviewProps {
   stage: StageInfo
   /** Speed-adjusted template time in seconds. */
   time: number
+  /** When set, shows a "tap for sound" button (autoplay is always muted by browsers). */
+  onEnableSound?: () => void
 }
 
-export function Preview({ template, params, stage, time }: PreviewProps) {
+export function Preview({ template, params, stage, time, onEnableSound }: PreviewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [cssWidth, setCssWidth] = useState(0)
   const [fontVersion, setFontVersion] = useState(0)
@@ -58,6 +60,14 @@ export function Preview({ template, params, stage, time }: PreviewProps) {
     <div className="preview">
       <div className="canvas" style={style}>
         <canvas ref={canvasRef} aria-label={`${template.name} preview`} />
+        {onEnableSound && (
+          <button type="button" className="sound-pill" onClick={onEnableSound}>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 9v6h4l5 4V5L8 9H4Zm12.5 3a4.5 4.5 0 0 0-2-3.7v7.4a4.5 4.5 0 0 0 2-3.7ZM14.5 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6Z" />
+            </svg>
+            Tap for sound
+          </button>
+        )}
         <div className={`font-loading${fontLoading ? ' visible' : ''}`} role="status" aria-live="polite">
           {fontLoading && (
             <>

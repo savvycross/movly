@@ -16,6 +16,8 @@ import {
   type TemplateCategory,
   type TemplateColors,
   type TemplateParams,
+  cuesToStageTime,
+  type SoundEvent,
 } from '../engine'
 import { outro, paintBackdrop, stack } from './shared'
 
@@ -102,4 +104,20 @@ export function draw(ctx: CanvasRenderingContext2D, time: number, params: Templa
       align: 'center',
     })
   }
+}
+
+/** Bar swish, soft whoosh as letters rise, click for the subline, whoosh out. */
+export function sound(_ctx: CanvasRenderingContext2D, params: TemplateParams, stage: StageInfo): SoundEvent[] {
+  const { D } = fitTimeline(0, stage.duration, defaultDuration)
+  const cues: SoundEvent[] = [
+    { time: 0.1, kind: 'whoosh', gain: 0.5, pitch: 1.6 },
+    { time: 0.35, kind: 'whoosh', gain: 0.45 },
+  ]
+  if (params.logo) cues.push({ time: 0.4, kind: 'pop', gain: 0.6 })
+  if (params.subline.trim()) {
+    const headOpts = { start: 0.35, stagger: fitStagger(params.headline, 'letter', 1.1, 0.035), duration: 0.7 } as const
+    cues.push({ time: Math.min(revealEnd(params.headline, headOpts) - 0.4, 1.6), kind: 'click', gain: 0.35 })
+  }
+  cues.push({ time: D - 0.7, kind: 'whoosh', gain: 0.5 })
+  return cuesToStageTime(cues, stage.duration, defaultDuration)
 }

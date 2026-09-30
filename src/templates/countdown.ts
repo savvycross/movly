@@ -17,6 +17,8 @@ import {
   type TemplateCategory,
   type TemplateColors,
   type TemplateParams,
+  cuesToStageTime,
+  type SoundEvent,
 } from '../engine'
 import { drawLogoBadge, outro, paintBackdrop, stack } from './shared'
 
@@ -171,4 +173,20 @@ export function draw(ctx: CanvasRenderingContext2D, time: number, params: Templa
     ctx.restore()
   }
   drawLogoBadge(ctx, logo, L, t, D, 'top-left', countEnd + 0.4)
+}
+
+/** A hit on every number, a riser into the flood, a big impact as the title lands. */
+export function sound(_ctx: CanvasRenderingContext2D, _params: TemplateParams, stage: StageInfo): SoundEvent[] {
+  const { D } = fitTimeline(0, stage.duration, defaultDuration)
+  const countEnd = START + BEAT * 3
+  const cues: SoundEvent[] = []
+  for (let i = 0; i < 3; i++) {
+    cues.push({ time: START + i * BEAT, kind: 'impact', gain: 0.75, pitch: 1 + i * 0.12 })
+    cues.push({ time: START + i * BEAT + BEAT / 2, kind: 'tick', gain: 0.35 })
+  }
+  cues.push({ time: countEnd - 0.75, kind: 'riser', duration: 0.75, gain: 0.8 })
+  cues.push({ time: countEnd, kind: 'impact', gain: 1.1, pitch: 0.8 })
+  cues.push({ time: countEnd + 0.02, kind: 'whoosh', gain: 0.6 })
+  cues.push({ time: D - 0.6, kind: 'whoosh', gain: 0.5 })
+  return cuesToStageTime(cues, stage.duration, defaultDuration)
 }

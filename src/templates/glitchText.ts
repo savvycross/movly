@@ -15,6 +15,8 @@ import {
   type TemplateCategory,
   type TemplateColors,
   type TemplateParams,
+  cuesToStageTime,
+  type SoundEvent,
 } from '../engine'
 import { drawLogoBadge, outro, paintBackdrop } from './shared'
 
@@ -158,4 +160,24 @@ export function draw(ctx: CanvasRenderingContext2D, time: number, params: Templa
   for (let y = 0; y < L.H; y += gapY) ctx.fillRect(0, y, L.W, gapY * 0.4)
 
   drawLogoBadge(ctx, logo, L, t, D, 'bottom-right', 0.9)
+}
+
+/** Glitch bursts exactly where the visual bursts happen, decode ticks, glitch out. */
+export function sound(_ctx: CanvasRenderingContext2D, params: TemplateParams, stage: StageInfo): SoundEvent[] {
+  const { D } = fitTimeline(0, stage.duration, defaultDuration)
+  const cues: SoundEvent[] = [
+    { time: 0.02, kind: 'glitch', gain: 0.9 },
+    { time: 0.35, kind: 'glitch', gain: 0.6, pitch: 1.3 },
+  ]
+  // Same burst rule as intensity(): 5 slots per second between 1.2s and D - 0.8s.
+  for (let slot = Math.ceil(1.2 * 5); slot / 5 < D - 0.8; slot++) {
+    if (hash(slot + 7) > 0.78) cues.push({ time: Math.max(1.2, slot / 5), kind: 'glitch', gain: 0.35 + hash(slot) * 0.3, pitch: 0.8 + hash(slot + 3) * 0.6 })
+  }
+  const chars = Array.from(params.subline).length
+  if (chars > 0) {
+    const step = Math.min(0.025, 1.2 / Math.max(1, chars))
+    for (let i = 0; i < chars; i += 3) cues.push({ time: 0.9 + i * step, kind: 'tick', gain: 0.15, pitch: 1.6 })
+  }
+  cues.push({ time: D - 0.6, kind: 'glitch', gain: 1, pitch: 0.7 })
+  return cuesToStageTime(cues, stage.duration, defaultDuration)
 }

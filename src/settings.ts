@@ -1,7 +1,8 @@
 import { ASPECT_RATIO_IDS, FONTS, clamp, type AspectRatio, type TemplateColors } from './engine'
 import { DURATION_RANGE, HEADLINE_MAX, SPEED_RANGE, SUBLINE_MAX } from './limits'
+import { BEAT_STYLES, type AudioSettings } from './audio/types'
 
-/** What we remember between visits. The logo is deliberately NOT stored. */
+/** What we remember between visits. The logo and uploaded audio are deliberately NOT stored. */
 export interface SavedSettings {
   templateId: string
   headline: string
@@ -12,6 +13,8 @@ export interface SavedSettings {
   aspect: AspectRatio
   speed: number
   duration: number
+  /** Sound choices. `music` is never 'upload' here: uploaded audio isn't saved. */
+  audio?: AudioSettings
 }
 
 export const SETTINGS_KEY = 'movly:settings:v1'
@@ -41,6 +44,17 @@ export function parseSettings(raw: unknown, templateIds: readonly string[]): Par
   if (typeof r.aspect === 'string' && (ASPECT_RATIO_IDS as string[]).includes(r.aspect)) out.aspect = r.aspect as AspectRatio
   if (isNum(r.speed)) out.speed = snap(r.speed, SPEED_RANGE)
   if (isNum(r.duration)) out.duration = snap(r.duration, DURATION_RANGE)
+  if (r.audio && typeof r.audio === 'object') {
+    const a = r.audio as Record<string, unknown>
+    const vol = (v: unknown, fallback: number) => (isNum(v) ? clamp(v, 0, 1) : fallback)
+    out.audio = {
+      enabled: typeof a.enabled === 'boolean' ? a.enabled : true,
+      sfxVolume: vol(a.sfxVolume, 0.8),
+      // An uploaded track isn't saved, so it can't be restored: fall back to no music.
+      music: typeof a.music === 'string' && (BEAT_STYLES as readonly string[]).includes(a.music) ? (a.music as AudioSettings['music']) : 'none',
+      musicVolume: vol(a.musicVolume, 0.6),
+    }
+  }
   return out
 }
 
@@ -65,8 +79,12 @@ export function loadSettings(templateIds: readonly string[], store: Storage | nu
 export function saveSettings(settings: SavedSettings, store: Storage | null = storage()): void {
   try {
     // Build the object explicitly so nothing else (like a logo) can sneak in.
-    const { templateId, headline, subline, colors, font, aspect, speed, duration } = settings
-    store?.setItem(SETTINGS_KEY, JSON.stringify({ templateId, headline, subline, colors, font, aspect, speed, duration }))
+    const { templateId, headline, subline, colors, font, aspect, speed, duration, audio } = settings
+    const safeAudio = audio && { ...audio, music: audio.music === 'upload' ? 'none' : audio.music }
+    store?.setItem(
+      SETTINGS_KEY,
+      JSON.stringify({ templateId, headline, subline, colors, font, aspect, speed, duration, audio: safeAudio }),
+    )
   } catch {
     // Quota exceeded or storage disabled: settings just won't persist.
   }

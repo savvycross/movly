@@ -16,6 +16,9 @@ import {
   type TemplateCategory,
   type TemplateColors,
   type TemplateParams,
+  cuesToStageTime,
+  type SoundEvent,
+  countUnits,
 } from '../engine'
 import { drawLogoBadge, outro } from './shared'
 
@@ -137,4 +140,22 @@ export function draw(ctx: CanvasRenderingContext2D, time: number, params: Templa
   }
 
   drawLogoBadge(ctx, logo, L, t, D, L.portrait ? 'bottom-left' : 'bottom-right', 0.8)
+}
+
+/** Pop for the quote mark, soft ticks as words appear, a click for the attribution. */
+export function sound(_ctx: CanvasRenderingContext2D, params: TemplateParams, stage: StageInfo): SoundEvent[] {
+  const { D } = fitTimeline(0, stage.duration, defaultDuration)
+  const { headline, subline } = params
+  const stagger = fitStagger(headline, 'word', 1.5, 0.07)
+  const cues: SoundEvent[] = [{ time: 0.25, kind: 'pop', gain: 0.7, pitch: 0.9 }]
+  const words = countUnits(headline, 'word')
+  for (let i = 0; i < words; i++) cues.push({ time: 0.6 + i * stagger, kind: 'tick', gain: 0.18, pitch: 0.8 })
+  if (subline.trim()) {
+    const qOpts = { mode: 'word', start: 0.6, stagger, duration: 0.6 } as const
+    const s = Math.min(revealEnd(headline, qOpts) + 0.1, 3.2)
+    cues.push({ time: s, kind: 'whoosh', gain: 0.35, pitch: 1.6 })
+    cues.push({ time: s + 0.2, kind: 'click', gain: 0.4 })
+  }
+  cues.push({ time: D - 0.7, kind: 'whoosh', gain: 0.4 })
+  return cuesToStageTime(cues, stage.duration, defaultDuration)
 }

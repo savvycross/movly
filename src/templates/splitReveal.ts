@@ -14,6 +14,8 @@ import {
   type TemplateCategory,
   type TemplateColors,
   type TemplateParams,
+  cuesToStageTime,
+  type SoundEvent,
 } from '../engine'
 import { drawLogoBadge, outro, paintBackdrop, stack } from './shared'
 
@@ -126,4 +128,19 @@ export function draw(ctx: CanvasRenderingContext2D, time: number, params: Templa
   }
 
   drawLogoBadge(ctx, logo, L, t, D, 'top-left', 0.9)
+}
+
+/** Doors whoosh open, halves slam together, rule click, then the reverse at the end. */
+export function sound(_ctx: CanvasRenderingContext2D, _params: TemplateParams, stage: StageInfo): SoundEvent[] {
+  const { D } = fitTimeline(0, stage.duration, defaultDuration)
+  const cues: SoundEvent[] = [
+    { time: 0.05, kind: 'whoosh', gain: 0.9 },
+    { time: 0.45, kind: 'whoosh', gain: 0.5, pitch: 1.5 },
+    { time: 0.8, kind: 'impact', gain: 0.9 },
+    { time: 1.1, kind: 'click', gain: 0.4 },
+    { time: D - 0.95, kind: 'whoosh', gain: 0.5, pitch: 1.5 },
+    { time: D - 0.55, kind: 'whoosh', gain: 0.8 },
+    { time: D - 0.05, kind: 'impact', gain: 0.7, pitch: 1.2 },
+  ]
+  return cuesToStageTime(cues, stage.duration, defaultDuration)
 }

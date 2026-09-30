@@ -8,5 +8,7 @@ export default defineConfig({
   plugins: [react()],
   // Export libraries are loaded lazily; pre-bundle them so the dev server
   // doesn't reload the page the first time an export starts.
-  optimizeDeps: { include: ['mediabunny', 'gifenc'] },
+  // The WASM AAC encoder (~1 MB, lazy, only for browsers without native AAC) is expected to be big.
+  build: { chunkSizeWarningLimit: 1100 },
+  optimizeDeps: { include: ['mediabunny', 'gifenc', '@mediabunny/aac-encoder'] },
 })

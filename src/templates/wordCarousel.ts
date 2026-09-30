@@ -19,6 +19,9 @@ import {
   type TemplateCategory,
   type TemplateColors,
   type TemplateParams,
+  cuesToStageTime,
+  type SoundEvent,
+  countUnits,
 } from '../engine'
 import { drawLogoBadge, outro, paintBackdrop, stack } from './shared'
 
@@ -145,4 +148,23 @@ export function draw(ctx: CanvasRenderingContext2D, time: number, params: Templa
   }
 
   drawLogoBadge(ctx, logo, L, t, D, 'top-left', 0.4)
+}
+
+/** A click as each word rolls in, a whoosh as the slot morphs, pops for the final words. */
+export function sound(_ctx: CanvasRenderingContext2D, params: TemplateParams, stage: StageInfo): SoundEvent[] {
+  const { D } = fitTimeline(0, stage.duration, defaultDuration)
+  const words = params.headline.split(/\s+/).filter(Boolean).slice(0, 6)
+  const n = Math.max(1, words.length)
+  const start = 0.3
+  const carouselEnd = Math.min(start + n * 0.6, D * 0.4)
+  const beat = Math.max(0.3, (carouselEnd - start) / n)
+  const roll = Math.min(0.32, beat * 0.55)
+  const cues: SoundEvent[] = [{ time: 0.05, kind: 'pop', gain: 0.6 }]
+  for (let i = 0; i < n - 1; i++) cues.push({ time: start + i * beat + beat - roll, kind: 'click', gain: 0.55, pitch: 1 + i * 0.08 })
+  cues.push({ time: carouselEnd, kind: 'whoosh', gain: 0.7 })
+  const stagger = fitStagger(params.headline, 'word', 0.7, 0.08)
+  const all = countUnits(params.headline, 'word')
+  for (let i = 0; i < all; i++) cues.push({ time: carouselEnd + 0.25 + i * stagger, kind: 'pop', gain: 0.35, pitch: 1 + i * 0.06 })
+  cues.push({ time: D - 0.6, kind: 'whoosh', gain: 0.5 })
+  return cuesToStageTime(cues, stage.duration, defaultDuration)
 }

@@ -29,6 +29,22 @@ export interface StageInfo {
   duration: number
 }
 
+/** Synthesized sound effects (generated with Web Audio; see src/audio/synth.ts). */
+export type SfxKind = 'whoosh' | 'pop' | 'click' | 'glitch' | 'riser' | 'impact' | 'tick'
+
+/** A sound effect cue in template time (the same clock `draw()` gets). */
+export interface SoundEvent {
+  /** Template seconds (speed-adjusted, like `draw`'s `time`). */
+  time: number
+  kind: SfxKind
+  /** 0–1+, default 1. */
+  gain?: number
+  /** Playback-rate style pitch multiplier, default 1. */
+  pitch?: number
+  /** Seconds, for sustained sounds like `riser`. In template time. */
+  duration?: number
+}
+
 export type TemplateCategory = 'Titles' | 'Lower thirds' | 'Logo reveals' | 'Social' | 'Transitions'
 
 /**
@@ -50,4 +66,10 @@ export interface Template {
    * @param stage Stage size and duration; lay everything out relative to it.
    */
   draw(ctx: CanvasRenderingContext2D, time: number, params: TemplateParams, stage: StageInfo): void
+  /**
+   * Default sound design: effect cues timed to this template's own animation.
+   * Must use the same timing/layout code as `draw()` so they stay in sync, and
+   * be deterministic. `ctx` is only for text measurement (don't draw).
+   */
+  sound?(ctx: CanvasRenderingContext2D, params: TemplateParams, stage: StageInfo): SoundEvent[]
 }

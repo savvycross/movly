@@ -3,4 +3,14 @@
  * library; callers load this module lazily (`import('./mediabunny')`) so none
  * of it is downloaded until the user exports.
  */
-export { BufferTarget, CanvasSource, Mp4OutputFormat, Output, QUALITY_HIGH, WebMOutputFormat, canEncodeVideo } from 'mediabunny'
+export {
+  AudioBufferSource,
+  BufferTarget,
+  CanvasSource,
+  Mp4OutputFormat,
+  Output,
+  QUALITY_HIGH,
+  WebMOutputFormat,
+  canEncodeAudio,
+  canEncodeVideo,
+} from 'mediabunny'

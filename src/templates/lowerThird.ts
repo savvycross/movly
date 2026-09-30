@@ -16,6 +16,8 @@ import {
   type TemplateCategory,
   type TemplateColors,
   type TemplateParams,
+  cuesToStageTime,
+  type SoundEvent,
 } from '../engine'
 import { drawLogoBadge } from './shared'
 
@@ -141,4 +143,19 @@ export function draw(ctx: CanvasRenderingContext2D, time: number, params: Templa
   }
 
   drawLogoBadge(ctx, logo, L, t, D, 'top-right', 0.4)
+}
+
+/** Click for the bar, whooshes as the panels wipe in and out. */
+export function sound(_ctx: CanvasRenderingContext2D, params: TemplateParams, stage: StageInfo): SoundEvent[] {
+  const { D } = fitTimeline(0, stage.duration, defaultDuration)
+  const exitBase = D - 0.9
+  const hasSub = params.subline.trim().length > 0
+  const cues: SoundEvent[] = [
+    { time: 0.1, kind: 'click', gain: 0.6 },
+    { time: 0.35, kind: 'whoosh', gain: 0.7, pitch: 1.2 },
+  ]
+  if (hasSub) cues.push({ time: 0.55, kind: 'whoosh', gain: 0.45, pitch: 1.6 })
+  cues.push({ time: hasSub ? exitBase : exitBase + 0.15, kind: 'whoosh', gain: 0.6, pitch: 0.9 })
+  cues.push({ time: exitBase + 0.5, kind: 'click', gain: 0.4 })
+  return cuesToStageTime(cues, stage.duration, defaultDuration)
 }

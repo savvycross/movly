@@ -19,6 +19,8 @@ import {
   type TemplateCategory,
   type TemplateColors,
   type TemplateParams,
+  cuesToStageTime,
+  type SoundEvent,
 } from '../engine'
 import { drawLogoBadge, stack } from './shared'
 
@@ -176,4 +178,24 @@ export function draw(ctx: CanvasRenderingContext2D, time: number, params: Templa
   }
 
   drawLogoBadge(ctx, logo, L, t, D, 'top-left', 0.6)
+}
+
+/** easeOutBounce first touches down at 1/2.75 of its duration. */
+const FIRST_LANDING = 1 / 2.75
+
+/** Pops for the shapes, a pop per letter as it lands (rising pitch), a big pop for the pill. */
+export function sound(_ctx: CanvasRenderingContext2D, params: TemplateParams, stage: StageInfo): SoundEvent[] {
+  const { D } = fitTimeline(0, stage.duration, defaultDuration)
+  const exitAt = D - 0.7
+  const cues: SoundEvent[] = SHAPES.map((_, i) => ({ time: 0.05 + i * 0.08 + 0.1, kind: 'pop' as const, gain: 0.35, pitch: 1.4 + i * 0.1 }))
+  const n = countUnits(params.headline)
+  const stagger = Math.min(0.05, 1.1 / Math.max(1, n))
+  // Long headlines: thin out so pops don't turn into noise (max ~28 pops).
+  const every = Math.max(1, Math.ceil(n / 28))
+  for (let i = 0; i < n; i += every) {
+    cues.push({ time: 0.25 + i * stagger + 0.8 * FIRST_LANDING, kind: 'pop', gain: 0.55, pitch: 0.8 + (i / Math.max(1, n - 1)) * 0.7 })
+  }
+  if (params.subline.trim()) cues.push({ time: Math.min(0.25 + n * stagger + 0.3, 1.8) + 0.15, kind: 'pop', gain: 0.9, pitch: 0.7 })
+  cues.push({ time: exitAt, kind: 'whoosh', gain: 0.6, pitch: 1.3 })
+  return cuesToStageTime(cues, stage.duration, defaultDuration)
 }

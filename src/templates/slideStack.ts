@@ -17,6 +17,9 @@ import {
   type TemplateCategory,
   type TemplateColors,
   type TemplateParams,
+  cuesToStageTime,
+  type SoundEvent,
+  type StageLayout,
 } from '../engine'
 import { drawLogoBadge, outro } from './shared'
 
@@ -30,10 +33,22 @@ export const defaultColors: TemplateColors = {
   accent: '#2dd4bf',
 }
 
+/** Shared by draw() and sound() so each line's box gets its own cue. */
+function headBlock(ctx: CanvasRenderingContext2D, params: TemplateParams, L: StageLayout, padX: number) {
+  return fitLines(ctx, params.headline, L.safeW - padX * 2, L.safeH * (params.subline.trim() ? 0.55 : 0.7), {
+    family: params.font,
+    weight: 800,
+    max: L.U * 0.12,
+    min: L.U * 0.04,
+    maxLines: L.portrait ? 5 : 3,
+    lineHeight: 1.32,
+  })
+}
+
 export function draw(ctx: CanvasRenderingContext2D, time: number, params: TemplateParams, stage: StageInfo) {
   const { t, D } = fitTimeline(time, stage.duration, defaultDuration)
   const L = stageLayout(stage)
-  const { colors, font, headline, subline, logo } = params
+  const { colors, font, subline, logo } = params
   const hasSub = subline.trim().length > 0
 
   ctx.fillStyle = colors.bg
@@ -44,14 +59,7 @@ export function draw(ctx: CanvasRenderingContext2D, time: number, params: Templa
 
   // Headline lines, each on its own highlight box.
   const padX = L.U * 0.03
-  const head = fitLines(ctx, headline, L.safeW - padX * 2, L.safeH * (hasSub ? 0.55 : 0.7), {
-    family: font,
-    weight: 800,
-    max: L.U * 0.12,
-    min: L.U * 0.04,
-    maxLines: L.portrait ? 5 : 3,
-    lineHeight: 1.32,
-  })
+  const head = headBlock(ctx, params, L, padX)
   const sub = hasSub
     ? fitLines(ctx, subline, L.safeW * 0.9, L.safeH * 0.16, {
         family: font,
@@ -129,4 +137,19 @@ export function draw(ctx: CanvasRenderingContext2D, time: number, params: Templa
   })
 
   drawLogoBadge(ctx, logo, L, t, D, 'top-left', 0.6)
+}
+
+/** Bars whoosh off, a click per line box, bars whoosh back at the end. */
+export function sound(ctx: CanvasRenderingContext2D, params: TemplateParams, stage: StageInfo): SoundEvent[] {
+  const { D } = fitTimeline(0, stage.duration, defaultDuration)
+  const L = stageLayout(stage)
+  const head = headBlock(ctx, params, L, L.U * 0.03)
+  const cues: SoundEvent[] = [{ time: 0, kind: 'whoosh', gain: 0.9 }]
+  head.lines.forEach((_, i) => {
+    cues.push({ time: 0.45 + i * 0.14, kind: 'click', gain: 0.6, pitch: 1 + i * 0.1 })
+    cues.push({ time: 0.45 + i * 0.14, kind: 'whoosh', gain: 0.25, pitch: 1.8 })
+  })
+  cues.push({ time: D - 0.8, kind: 'whoosh', gain: 0.4, pitch: 1.4 })
+  cues.push({ time: D - 0.45, kind: 'whoosh', gain: 0.8 })
+  return cuesToStageTime(cues, stage.duration, defaultDuration)
 }

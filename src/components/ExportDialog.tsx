@@ -13,6 +13,7 @@ import {
   type ExportResult,
   type VideoPlan,
 } from '../export'
+import type { AudioPlan } from '../audio/types'
 
 interface ExportDialogProps {
   open: boolean
@@ -20,6 +21,10 @@ interface ExportDialogProps {
   onClose: () => void
   /** Called with true while an export is running. */
   onBusyChange: (busy: boolean) => void
+  /** Soundtrack for video exports, or null when sound is off. */
+  audio: { plan: AudioPlan; upload: AudioBuffer | null } | null
+  /** Human description of the soundtrack, e.g. "effects + hype beat". */
+  soundLabel: string | null
 }
 
 type Phase =
@@ -33,7 +38,7 @@ const isIOS = () =>
 
 const formatBytes = (n: number) => (n > 1e6 ? `${(n / 1e6).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1e3))} KB`)
 
-export function ExportDialog({ open, comp, onClose, onBusyChange }: ExportDialogProps) {
+export function ExportDialog({ open, comp, onClose, onBusyChange, audio, soundLabel }: ExportDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const abortRef = useRef<AbortController | null>(null)
   const [format, setFormat] = useState<ExportFormat>('video')
@@ -95,6 +100,7 @@ export function ExportDialog({ open, comp, onClose, onBusyChange }: ExportDialog
     try {
       const result = await runExport({
         comp: { ...comp, watermark },
+        audio: format === 'video' ? audio : null,
         format,
         quality,
         plan: format === 'video' && plan !== 'detecting' ? plan : undefined,
@@ -202,6 +208,13 @@ export function ExportDialog({ open, comp, onClose, onBusyChange }: ExportDialog
               Your headline is empty. Add one in the Text section before exporting.
             </p>
           )}
+          <p className={`sound-line${format === 'gif' || !soundLabel ? ' muted' : ''}`}>
+            {format === 'gif'
+              ? '🔇 GIFs are silent: the format can’t carry sound. Export a video to include audio.'
+              : soundLabel
+                ? `🔊 Sound: ${soundLabel} (${plan && plan !== 'detecting' && plan.container === 'webm' ? 'Opus' : 'AAC'})`
+                : '🔇 Silent: sound is off in the sidebar.'}
+          </p>
           {format === 'gif' && <p className="hint">GIFs use 256 colors, so soft gradients may band. Use video for best quality.</p>}
           {format === 'video' && plan && plan !== 'detecting' && plan.method === 'mediarecorder' && (
             <p className="hint">
@@ -249,7 +262,8 @@ export function ExportDialog({ open, comp, onClose, onBusyChange }: ExportDialog
           <p className="export-summary">
             <span className="export-file">{phase.result.fileName}</span>
             <br />
-            {phase.result.width}×{phase.result.height} · {phase.result.frames} frames · {formatBytes(phase.result.blob.size)}
+            {phase.result.width}×{phase.result.height} · {phase.result.frames} frames ·{' '}
+            {phase.result.audioCodec ? `${phase.result.audioCodec.toUpperCase()} audio` : 'no audio'} · {formatBytes(phase.result.blob.size)}
           </p>
           {canShare && isIOS() && <p className="hint">On iPhone, tap Share → Save Video (or Save Image) to add it to Photos.</p>}
           <div className="export-actions">

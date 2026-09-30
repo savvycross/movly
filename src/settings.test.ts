@@ -27,6 +27,23 @@ describe('settings', () => {
     expect(loadSettings(IDS, store)).toEqual(valid)
   })
 
+  it('remembers sound choices but never an uploaded track', () => {
+    const store = new MemoryStorage()
+    saveSettings({ ...valid, audio: { enabled: false, sfxVolume: 0.4, music: 'hype', musicVolume: 0.3 } }, store as unknown as Storage)
+    expect(loadSettings(IDS, store as unknown as Storage).audio).toEqual({ enabled: false, sfxVolume: 0.4, music: 'hype', musicVolume: 0.3 })
+    const withUpload = { ...valid, audio: { enabled: true, sfxVolume: 1, music: 'upload' as const, musicVolume: 1 }, uploadBuffer: [1, 2, 3] }
+    saveSettings(withUpload as unknown as SavedSettings, store as unknown as Storage)
+    const raw = store.data.get(SETTINGS_KEY)!
+    expect(JSON.parse(raw).audio.music).toBe('none')
+    expect(raw).not.toContain('uploadBuffer')
+    expect(parseSettings({ audio: { enabled: 'yes', sfxVolume: 7, music: 'upload', musicVolume: -1 } }, IDS).audio).toEqual({
+      enabled: true,
+      sfxVolume: 1,
+      music: 'none',
+      musicVolume: 0,
+    })
+  })
+
   it('never stores a logo', () => {
     const store = new MemoryStorage()
     saveSettings({ ...valid, logo: { big: 'image' } } as unknown as SavedSettings, store as unknown as Storage)
