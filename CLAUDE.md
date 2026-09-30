@@ -27,7 +27,7 @@ approach or flag it instead of adding one.
 
 - **Vite** (dev server + bundler), **React 19**, **TypeScript** (strict)
 - Plain CSS with custom properties (`src/index.css`) — dark theme, no CSS framework
-- Hosting: **Vercel** (https://movly-gamma.vercel.app/), which builds and deploys
+- Hosting: **Vercel** (https://movlyapp.vercel.app/), which builds and deploys
   every push to `main`. GitHub Actions only runs checks (`ci.yml`) and serves a
   redirect from the old GitHub Pages URL (`pages-redirect.yml`).
 
