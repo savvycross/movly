@@ -50,6 +50,13 @@ src/
   palettes.ts           # 8 ready-made color palettes
   settings.ts           # remember last settings in localStorage (validated; never the logo)
   limits.ts             # input limits, headline placeholder (withHeadlinePlaceholder)
+  audio/
+    types.ts            # AudioSettings, AudioPlan, BeatNote, PlannedSfx
+    beats.ts            # 4 generated beat loops (chill, hype, corporate, minimal) as note lists
+    plan.ts             # planAudio(): template cues + beat + upload → real-time AudioPlan (pure)
+    synth.ts            # Web Audio synthesis: 7 effects, 10 instruments, schedulePlan, offline render
+    usePreviewAudio.ts  # preview playback in sync with the playhead (after a user gesture)
+    audio.test.ts       # cue timing per template, speed/duration scaling, beats, plan
   describe/
     match.ts            # "Describe it": offline keyword/synonym matcher → ranked suggestions
     match.test.ts       # 26 example phrases + name/aspect/fallback tests
@@ -59,6 +66,7 @@ src/
     Header.tsx          # Movly branding
     Hero.tsx            # short landing intro + "Start creating" (scrolls to #editor)
     DescribeBox.tsx     # "Describe it" input, example chips, 3 animated suggestions
+    SoundControls.tsx   # sound on/off, effects/music volume, music choice, upload + offset
     Sidebar.tsx         # template grid, format, text, colors, font, logo, timing controls
     TemplateThumb.tsx   # animated mini-preview (only animates while visible)
     Preview.tsx         # <canvas> preview: DPR-aware sizing, font loading, renderFrame
@@ -72,6 +80,7 @@ src/
     gif.ts, gif.worker.ts  # GIF via gifenc in a Web Worker (global palette)
     mediabunny*.ts      # the only Mediabunny import sites (tree-shaken, lazy-loaded)
     watermark.ts        # optional "Made with Movly" corner badge (off by default)
+    audioCodec.ts       # AAC (MP4) / Opus (WebM); lazy WASM AAC encoder when not native
     index.ts            # runExport(), detectVideoPlan()
   engine/               # framework-free animation engine (no React imports)
     types.ts            # Template, TemplateParams, StageInfo, TemplateColors
@@ -144,7 +153,36 @@ Stages: **16:9 = 1920×1080, 1:1 = 1080×1080, 4:5 = 1080×1350, 9:16 = 1080×19
   exports; import those lazily (`await import('./mediabunny')`) so the library
   stays out of the main bundle.
 - Test locally: Playwright's Chromium has no H.264 encoder, so headless tests
-  produce WebM; real Chrome/Edge/Safari produce MP4.
+  produce WebM; real Chrome/Edge/Safari produce MP4. AAC is tested through the
+  WASM encoder (force an MP4 container plan).
+
+## Audio
+
+- **No audio files.** Every effect and beat is synthesized with the Web Audio
+  API (`src/audio/synth.ts`), so there's nothing to license. Randomness (noise,
+  glitch pitches) is seeded; renders are identical apart from float rounding
+  (<1e-6).
+- **Templates own their sound design:** `sound(ctx, params, stage)` returns
+  `SoundEvent`s in template time, computed from the *same* timing constants and
+  layout helpers as `draw()` (e.g. Typewriter reuses `typeTimes`, Kinetic
+  Title/Slide Stack share a layout function). Author cues in fitTimeline
+  local time and return `cuesToStageTime(cues, stage.duration, defaultDuration)`.
+- `planAudio()` turns cues into real seconds (`time / speed`, like frames),
+  adds the beat (fixed tempo per style, loops for the clip length) or the
+  uploaded track (start offset, trimmed to the clip), volumes, and a 0.5s
+  music fade-out. Preview and export both play this one plan, so they match.
+- **Preview** audio only starts after a user gesture (play button, Space,
+  "Tap for sound"): browsers block audible autoplay. `usePlayback().epoch`
+  bumps on play/seek/loop so audio reschedules.
+- **Export** renders the plan with `OfflineAudioContext` (48kHz stereo, exact
+  clip length) and muxes it with Mediabunny: AAC in MP4, Opus in WebM. If the
+  browser can't encode AAC natively, `@mediabunny/aac-encoder` (WASM, lazy) is
+  registered. GIFs are always silent (the dialog says so).
+- **Uploaded audio is never saved** (not in settings, not anywhere); users are
+  told they must own the rights. Saved settings keep only the sound choices,
+  and `music: 'upload'` is stored as `'none'`.
+- When adding a template, give it a `sound()` and a timing test in
+  `audio.test.ts` if its cues follow text (per letter/word/line).
 
 ## "Describe it" matcher
 

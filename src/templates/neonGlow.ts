@@ -16,6 +16,8 @@ import {
   type TemplateCategory,
   type TemplateColors,
   type TemplateParams,
+  cuesToStageTime,
+  type SoundEvent,
 } from '../engine'
 import { drawLogoBadge, stack } from './shared'
 
@@ -157,4 +159,23 @@ export function draw(ctx: CanvasRenderingContext2D, time: number, params: Templa
   if (sub) neonText(ctx, sub, L.cx, subY, mixColor(colors.accent, '#ffffff', 0.6), colors.accent, subOn)
 
   drawLogoBadge(ctx, logo, L, t, D, 'bottom-right', 1.2)
+}
+
+/** A buzz/click every time a tube sputters on (same frames as flicker()), hum-in impact when lit. */
+export function sound(_ctx: CanvasRenderingContext2D, params: TemplateParams, stage: StageInfo): SoundEvent[] {
+  const { D } = fitTimeline(0, stage.duration, defaultDuration)
+  const cues: SoundEvent[] = [{ time: 0.1, kind: 'riser', duration: 1.1, gain: 0.25 }]
+  const sputter = (start: number, seed: number, gain: number, pitch: number) => {
+    let wasOn = false
+    for (let f = Math.ceil(start * 30); f < (start + 0.9) * 30; f++) {
+      const on = flicker(f / 30 + 1e-6, D, start, seed) > 0.5
+      if (on && !wasOn) cues.push({ time: f / 30, kind: 'click', gain, pitch })
+      wasOn = on
+    }
+    cues.push({ time: start + 0.9, kind: 'impact', gain: gain * 0.8, pitch: 1.6 })
+  }
+  sputter(0.5, 1, 0.5, 0.7)
+  if (params.subline.trim()) sputter(1.3, 7, 0.3, 1.2)
+  cues.push({ time: D - 0.5, kind: 'glitch', gain: 0.4, pitch: 0.6 })
+  return cuesToStageTime(cues, stage.duration, defaultDuration)
 }

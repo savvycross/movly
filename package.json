@@ -12,6 +12,7 @@
     "share-images": "node scripts/share-images.mjs"
   },
   "dependencies": {
+    "@mediabunny/aac-encoder": "^1.61.0",
     "gifenc": "^1.0.3",
     "mediabunny": "^1.61.0",
     "react": "^19.3.0",

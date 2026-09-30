@@ -16,6 +16,9 @@ import {
   type TemplateCategory,
   type TemplateColors,
   type TemplateParams,
+  cuesToStageTime,
+  type SoundEvent,
+  type StageLayout,
 } from '../engine'
 import { drawLogoBadge, outro } from './shared'
 
@@ -36,10 +39,17 @@ function stackLines(ctx: CanvasRenderingContext2D, text: string, width: number, 
   return fitLines(ctx, words.join(' '), width, height, { family: font, weight: 800, max: U * 0.2, maxLines: 5 }).lines
 }
 
+/** Shared by draw() and sound() so cues always match the number of lines on screen. */
+function stackLayout(ctx: CanvasRenderingContext2D, params: TemplateParams, L: StageLayout) {
+  const colW = Math.min(L.safeW, L.U * (L.landscape ? 1.1 : 0.95))
+  const availH = L.safeH * (params.subline.trim().length > 0 ? 0.72 : 0.86)
+  return { colW, availH, lines: stackLines(ctx, params.headline, colW, availH, params.font, L.U) }
+}
+
 export function draw(ctx: CanvasRenderingContext2D, time: number, params: TemplateParams, stage: StageInfo) {
   const { t, D } = fitTimeline(time, stage.duration, defaultDuration)
   const L = stageLayout(stage)
-  const { colors, font, headline, subline, logo } = params
+  const { colors, font, subline, logo } = params
   const hasSub = subline.trim().length > 0
 
   ctx.fillStyle = colors.bg
@@ -60,9 +70,7 @@ export function draw(ctx: CanvasRenderingContext2D, time: number, params: Templa
   ctx.restore()
 
   // Layout: each line scaled to fill the column width (classic kinetic stack).
-  const colW = Math.min(L.safeW, L.U * (L.landscape ? 1.1 : 0.95))
-  const availH = L.safeH * (hasSub ? 0.72 : 0.86)
-  const lines = stackLines(ctx, headline, colW, availH, font, L.U)
+  const { colW, availH, lines } = stackLayout(ctx, params, L)
   const gap = L.U * 0.018
   let sizes = lines.map((l) => fitFontSize(ctx, l, colW, { family: font, weight: 800, max: L.U * 0.3, min: 8 }))
   const blockH = (s: number[]) => s.reduce((a, b) => a + b * 0.86, 0) + gap * (s.length - 1)
@@ -152,4 +160,19 @@ export function draw(ctx: CanvasRenderingContext2D, time: number, params: Templa
   }
 
   drawLogoBadge(ctx, logo, L, t, D, 'top-left', 0.5)
+}
+
+/** Wipe whoosh, a swoosh + hit per stacked line, whoosh out. */
+export function sound(ctx: CanvasRenderingContext2D, params: TemplateParams, stage: StageInfo): SoundEvent[] {
+  const { D } = fitTimeline(0, stage.duration, defaultDuration)
+  const { lines } = stackLayout(ctx, params, stageLayout(stage))
+  const cues: SoundEvent[] = [{ time: 0, kind: 'whoosh', gain: 0.9 }]
+  lines.forEach((_, i) => {
+    const s = 0.2 + i * 0.2
+    cues.push({ time: s, kind: 'whoosh', gain: 0.35, pitch: 1.4 })
+    const last = i === lines.length - 1
+    cues.push({ time: s + 0.35, kind: last ? 'impact' : 'pop', gain: last ? 0.9 : 0.6, pitch: 0.8 + i * 0.08 })
+  })
+  cues.push({ time: D - 0.75, kind: 'whoosh', gain: 0.7 })
+  return cuesToStageTime(cues, stage.duration, defaultDuration)
 }

@@ -70,7 +70,7 @@ export async function exportGif({ comp, width, height, frames, signal, onProgres
     throwIfAborted(signal)
     const done = await send({ type: 'finish' })
     onProgress?.(1)
-    return { blob: new Blob([done.bytes as BlobPart], { type: 'image/gif' }), extension: 'gif' }
+    return { blob: new Blob([done.bytes as BlobPart], { type: 'image/gif' }), extension: 'gif', audioCodec: null }
   } finally {
     worker.terminate()
   }

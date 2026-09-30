@@ -22,6 +22,22 @@ export function fitTimeline(time: number, duration: number, designDuration: numb
   return { t: time / k, D: duration / k }
 }
 
+/**
+ * Maps cues authored in a template's local (fitTimeline) time back to stage
+ * time, dropping any that fall outside the clip. Durations scale too.
+ */
+export function cuesToStageTime<T extends { time: number; duration?: number }>(
+  cues: T[],
+  duration: number,
+  designDuration: number,
+): T[] {
+  const k = duration > 0 ? Math.min(1, duration / designDuration) : 1
+  return cues
+    .map((c) => ({ ...c, time: c.time * k, ...(c.duration !== undefined ? { duration: c.duration * k } : {}) }))
+    .filter((c) => c.time >= 0 && c.time <= duration)
+    .sort((a, b) => a.time - b.time)
+}
+
 /** Formats a frame index as `SS:FF` (seconds:frames), e.g. frame 74 @ 30fps → `02:14`. */
 export function formatTimecode(frame: number, fps: number = FPS): string {
   const safe = Math.max(0, Math.floor(frame))

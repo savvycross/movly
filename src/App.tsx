@@ -20,6 +20,10 @@ import { loadSettings, saveSettings } from './settings'
 import { setThumbsPaused } from './thumbClock'
 import { withHeadlinePlaceholder } from './limits'
 import type { Suggestion } from './describe/match'
+import { DEFAULT_AUDIO, type AudioSettings, type UploadedMusic } from './audio/types'
+import { planAudio } from './audio/plan'
+import { decodeAudioFile } from './audio/synth'
+import { usePreviewAudio } from './audio/usePreviewAudio'
 
 const DEFAULT_TEXT = {
   headline: 'Make it move',
@@ -44,6 +48,10 @@ export default function App() {
     speed: saved.speed ?? 1,
   }))
   const [loop, setLoop] = useState(true)
+  const [audio, setAudio] = useState<AudioSettings>(saved.audio ?? DEFAULT_AUDIO)
+  // Uploaded music lives in memory only: never saved, gone on reload.
+  const [upload, setUpload] = useState<UploadedMusic | null>(null)
+  const [uploadError, setUploadError] = useState<string | null>(null)
   const [exportOpen, setExportOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
 
@@ -60,11 +68,12 @@ export default function App() {
           aspect,
           speed: params.speed,
           duration,
+          audio,
         }),
       250,
     )
     return () => clearTimeout(id)
-  }, [templateId, params, customColors, aspect, duration])
+  }, [templateId, params, customColors, aspect, duration, audio])
 
   const fullParams = useMemo<TemplateParams>(
     () => ({ ...params, colors: customColors ?? template.defaultColors, logo: logo?.image ?? null }),
@@ -77,7 +86,7 @@ export default function App() {
   // Autoplay so the first thing people see is motion; with reduced motion, show a
   // settled "poster" frame instead of the (often empty) first frame.
   const [reduceMotion] = useState(() => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false)
-  const { frame, playing, toggle, seek, pause, play } = usePlayback(frames, loop, {
+  const { frame, playing, toggle, seek, pause, play, epoch, getFrame } = usePlayback(frames, loop, {
     autoplay: !reduceMotion,
     initialFrame: reduceMotion ? Math.floor(frames * 0.62) : 0,
   })
@@ -94,6 +103,55 @@ export default function App() {
   )
   const restartRef = useRef(restartPreview)
   restartRef.current = restartPreview
+
+  // ---- Sound -------------------------------------------------------------
+  const measureCtx = useMemo(() => document.createElement('canvas').getContext('2d')!, [])
+  const uploadOffset = upload ? Math.min(upload.offset, Math.max(0, upload.buffer.duration - duration)) : null
+  const audioPlan = useMemo(
+    () => planAudio({ template, params: renderParams, aspect, duration }, audio, measureCtx, uploadOffset),
+    [template, renderParams, aspect, duration, audio, measureCtx, uploadOffset],
+  )
+  const previewAudio = usePreviewAudio({
+    plan: audioPlan,
+    upload: upload?.buffer ?? null,
+    playing,
+    epoch,
+    getTime: () => getFrame() / FPS,
+  })
+  const patchAudio = useCallback((patch: Partial<AudioSettings>) => setAudio((a) => ({ ...a, ...patch })), [])
+  const onUploadFile = useCallback(async (file: File | null) => {
+    setUploadError(null)
+    if (!file) {
+      setUpload(null)
+      setAudio((a) => (a.music === 'upload' ? { ...a, music: 'none' } : a))
+      return
+    }
+    try {
+      const buffer = await decodeAudioFile(file)
+      setUpload({ buffer, name: file.name, offset: 0 })
+      setAudio((a) => ({ ...a, enabled: true, music: 'upload' }))
+    } catch {
+      setUploadError("Couldn't read that file. Try an MP3, M4A or WAV.")
+    }
+  }, [])
+  const onUploadOffset = useCallback((offset: number) => setUpload((u) => u && { ...u, offset }), [])
+  /** Play/pause from a user gesture: the moment browsers allow sound. */
+  const userToggle = useCallback(() => {
+    previewAudio.unlock()
+    toggle()
+  }, [previewAudio, toggle])
+  const enableSound = useCallback(() => {
+    previewAudio.unlock()
+    if (!playing) play()
+  }, [previewAudio, playing, play])
+  const soundLabel = !audio.enabled
+    ? null
+    : [
+        audio.sfxVolume > 0 ? 'effects' : null,
+        audio.music === 'upload' ? (upload ? upload.name : null) : audio.music !== 'none' && audio.musicVolume > 0 ? `${audio.music} beat` : null,
+      ]
+        .filter(Boolean)
+        .join(' + ') || null
 
   const seekRef = useRef(seek)
   seekRef.current = seek
@@ -173,7 +231,7 @@ export default function App() {
       if (e.code === 'Space') {
         // Also stops a focused button from being "clicked" and the page from scrolling.
         e.preventDefault()
-        if (!e.repeat) toggle()
+        if (!e.repeat) userToggle()
       } else if ((e.code === 'ArrowLeft' || e.code === 'ArrowRight') && !(e.target instanceof HTMLInputElement)) {
         e.preventDefault()
         const step = (e.shiftKey ? FPS : 1) * (e.code === 'ArrowLeft' ? -1 : 1)
@@ -191,7 +249,7 @@ export default function App() {
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup', onKeyUp)
     }
-  }, [toggle, pause, exportOpen])
+  }, [userToggle, pause, exportOpen])
 
   return (
     <div className="app">
@@ -215,15 +273,27 @@ export default function App() {
           onDuration={setDuration}
           disabled={exportOpen}
           onApplySuggestion={applySuggestion}
+          audio={audio}
+          onAudio={patchAudio}
+          upload={upload && { name: upload.name, length: upload.buffer.duration, offset: uploadOffset ?? 0 }}
+          uploadError={uploadError}
+          onUploadFile={onUploadFile}
+          onUploadOffset={onUploadOffset}
         />
         <main className="stage-area">
-          <Preview template={template} params={renderParams} stage={stage} time={frameToTime(frame, params.speed)} />
+          <Preview
+            template={template}
+            params={renderParams}
+            stage={stage}
+            time={frameToTime(frame, params.speed)}
+            onEnableSound={audioPlan && !previewAudio.unlocked && playing ? enableSound : undefined}
+          />
           <Transport
             frame={frame}
             totalFrames={frames}
             playing={playing}
             loop={loop}
-            onToggle={toggle}
+            onToggle={userToggle}
             onToggleLoop={() => setLoop((l) => !l)}
             onSeek={seek}
             onDownload={openExport}
@@ -234,6 +304,8 @@ export default function App() {
       <ExportDialog
         open={exportOpen}
         comp={{ template, params: fullParams, aspect, duration }}
+        audio={audioPlan ? { plan: audioPlan, upload: upload?.buffer ?? null } : null}
+        soundLabel={soundLabel}
         onClose={() => !exporting && setExportOpen(false)}
         onBusyChange={setExporting}
       />

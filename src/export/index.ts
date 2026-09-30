@@ -13,6 +13,9 @@ import {
   type VideoPlan,
 } from './plan'
 import { exportVideo } from './video'
+import { renderPlanOffline } from '../audio/synth'
+import type { AudioPlan } from '../audio/types'
+import type { AudioCodecId } from './audioCodec'
 
 export * from './plan'
 export { ExportCanceled } from './frames'
@@ -26,6 +29,8 @@ export interface ExportRequest {
   plan?: VideoPlan | null
   signal?: AbortSignal
   onProgress?: (fraction: number) => void
+  /** Soundtrack to include (video only; GIFs are always silent). Null = silent. */
+  audio?: { plan: AudioPlan; upload?: AudioBuffer | null } | null
 }
 
 export interface ExportResult {
@@ -35,6 +40,8 @@ export interface ExportResult {
   height: number
   frames: number
   fps: number
+  /** Audio codec in the file, or null when silent. */
+  audioCodec: AudioCodecId | null
 }
 
 /** Best video plan for this browser at the given export size. */
@@ -42,7 +49,7 @@ export async function detectVideoPlan(width: number, height: number): Promise<Vi
   return chooseVideoPlan(await detectVideoCaps(width, height))
 }
 
-export async function runExport({ comp, format, quality, plan, signal, onProgress }: ExportRequest): Promise<ExportResult> {
+export async function runExport({ comp, format, quality, plan, signal, onProgress, audio }: ExportRequest): Promise<ExportResult> {
   const stage = getStage(comp.aspect, comp.duration, comp.params.speed)
   const { width, height } = exportSize(stage, format, quality)
   const frames = exportFrameCount(comp.duration, format)
@@ -55,7 +62,21 @@ export async function runExport({ comp, format, quality, plan, signal, onProgres
   } else {
     const videoPlan = plan ?? (await detectVideoPlan(width, height))
     if (!videoPlan) throw new Error('This browser cannot encode video. Try GIF, or a recent Chrome, Edge, Safari or Firefox.')
-    file = await exportVideo({ comp, plan: videoPlan, width, height, quality, frames, signal, onProgress })
+    // Render the soundtrack offline first: deterministic and sample-accurate, independent of device speed.
+    const buffer = audio && videoPlan.method === 'webcodecs' ? await renderPlanOffline(audio.plan, audio.upload) : null
+    file = await exportVideo({
+      comp,
+      plan: videoPlan,
+      width,
+      height,
+      quality,
+      frames,
+      signal,
+      onProgress,
+      audio: buffer,
+      audioPlan: audio?.plan ?? null,
+      audioUpload: audio?.upload ?? null,
+    })
   }
   return {
     blob: file.blob,
@@ -64,5 +85,6 @@ export async function runExport({ comp, format, quality, plan, signal, onProgres
     height,
     frames,
     fps: exportFps(format),
+    audioCodec: file.audioCodec,
   }
 }

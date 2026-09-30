@@ -14,6 +14,12 @@ export function usePlayback(
   const [frame, setFrame] = useState(initialFrame)
   const [playing, setPlaying] = useState(autoplay)
   const frameRef = useRef(initialFrame)
+  /**
+   * Bumps whenever the timeline jumps (play starts, seek, loop wrap), so
+   * anything following playback, like audio, knows to reschedule.
+   */
+  const [epoch, setEpoch] = useState(0)
+  const bump = useCallback(() => setEpoch((e) => e + 1), [])
   // Wall-clock anchor for the current play run; reset on seek so playback resumes from the new frame.
   const anchorRef = useRef<{ time: number; frame: number } | null>(null)
   const lastFrame = totalFrames - 1
@@ -44,30 +50,39 @@ export function usePlayback(
           return
         }
         next %= totalFrames
+        bump()
       }
       if (next !== frameRef.current) commit(next)
       raf = requestAnimationFrame(tick)
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [playing, totalFrames, lastFrame, loop, fps, commit])
+  }, [playing, totalFrames, lastFrame, loop, fps, commit, bump])
 
   const toggle = useCallback(() => {
     // Pressing play on the final frame restarts from the top.
     if (!playing && frameRef.current >= lastFrame) commit(0)
+    if (!playing) bump()
     setPlaying(!playing)
-  }, [playing, lastFrame, commit])
+  }, [playing, lastFrame, commit, bump])
 
   const seek = useCallback(
     (f: number) => {
       anchorRef.current = null
       commit(Math.min(Math.max(0, Math.round(f)), lastFrame))
+      bump()
     },
-    [lastFrame, commit],
+    [lastFrame, commit, bump],
   )
 
   const pause = useCallback(() => setPlaying(false), [])
-  const play = useCallback(() => setPlaying(true), [])
+  const play = useCallback(() => {
+    bump()
+    setPlaying(true)
+  }, [bump])
 
-  return { frame, playing, toggle, seek, pause, play }
+  /** Current playhead in frames, readable without re-rendering. */
+  const getFrame = useCallback(() => frameRef.current, [])
+
+  return { frame, playing, toggle, seek, pause, play, epoch, getFrame }
 }

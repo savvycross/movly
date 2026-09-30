@@ -16,6 +16,8 @@ import {
   type TemplateCategory,
   type TemplateColors,
   type TemplateParams,
+  cuesToStageTime,
+  type SoundEvent,
 } from '../engine'
 import { drawLogoBadge, outro } from './shared'
 
@@ -185,4 +187,22 @@ export function draw(ctx: CanvasRenderingContext2D, time: number, params: Templa
   ctx.restore()
 
   drawLogoBadge(ctx, logo, L, t, D, 'top-right', 0.4)
+}
+
+/** One key tick per typed character (same jittered schedule as draw), spaces softer. */
+export function sound(_ctx: CanvasRenderingContext2D, params: TemplateParams, stage: StageInfo): SoundEvent[] {
+  const { D } = fitTimeline(0, stage.duration, defaultDuration)
+  // Wrapped lines are joined with single spaces in draw(); the same normalization gives the same count.
+  const norm = (s: string) => s.split(/\s+/).filter(Boolean).join(' ')
+  const head = Array.from(norm(params.headline))
+  const sub = Array.from(norm(params.subline))
+  const typeStart = 0.6
+  const cps = Math.max(16, (head.length + sub.length * 0.7) / Math.max(0.5, D * 0.5))
+  const headTimes = typeTimes(head.length, typeStart, cps, 1)
+  const subTimes = typeTimes(sub.length, headTimes[head.length] + 0.35, cps * 1.4, 500)
+  const cues: SoundEvent[] = [{ time: 0, kind: 'pop', gain: 0.4, pitch: 0.7 }]
+  head.forEach((ch, i) => cues.push({ time: headTimes[i], kind: 'tick', gain: ch === ' ' ? 0.25 : 0.6, pitch: 0.9 + hash(i + 11) * 0.3 }))
+  sub.forEach((ch, i) => cues.push({ time: subTimes[i], kind: 'tick', gain: ch === ' ' ? 0.15 : 0.35, pitch: 1.1 + hash(i + 77) * 0.3 }))
+  cues.push({ time: D - 0.6, kind: 'whoosh', gain: 0.35 })
+  return cuesToStageTime(cues, stage.duration, defaultDuration)
 }

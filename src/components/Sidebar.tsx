@@ -12,6 +12,8 @@ import { DURATION_RANGE, HEADLINE_MAX, HEADLINE_PLACEHOLDER, SPEED_RANGE, SUBLIN
 import { PALETTES, sameColors } from '../palettes'
 import { TemplateThumb } from './TemplateThumb'
 import { DescribeBox } from './DescribeBox'
+import { SoundControls, type UploadInfo } from './SoundControls'
+import type { AudioSettings } from '../audio/types'
 import type { Suggestion } from '../describe/match'
 
 
@@ -34,6 +36,12 @@ interface SidebarProps {
   /** Locks every control (e.g. while exporting). */
   disabled?: boolean
   onApplySuggestion: (suggestion: Suggestion) => void
+  audio: AudioSettings
+  onAudio: (patch: Partial<AudioSettings>) => void
+  upload: UploadInfo | null
+  uploadError: string | null
+  onUploadFile: (file: File | null) => void
+  onUploadOffset: (seconds: number) => void
 }
 
 function Section({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
@@ -57,7 +65,7 @@ const COLOR_FIELDS: { key: keyof TemplateColors; label: string }[] = [
 export const Sidebar = memo(function Sidebar(props: SidebarProps) {
   const { templates, selectedId, onSelectTemplate, aspect, onAspect, params, onParams } = props
   const { customColors, onColors, onResetColors, logoName, onLogoFile, duration, onDuration, disabled } = props
-  const { onApplySuggestion } = props
+  const { onApplySuggestion, audio, onAudio, upload, uploadError, onUploadFile, onUploadOffset } = props
   const ids = { headline: useId(), subline: useId(), speed: useId(), duration: useId(), logo: useId() }
   const stage = ASPECT_RATIOS[aspect]
   const thumbStyle = { '--arw': stage.width, '--arh': stage.height } as CSSProperties
@@ -238,6 +246,18 @@ export const Sidebar = memo(function Sidebar(props: SidebarProps) {
           )}
         </div>
         <p className="hint">Stays on your device. Nothing is uploaded.</p>
+      </Section>
+
+      <Section title="Sound">
+        <SoundControls
+          audio={audio}
+          onAudio={onAudio}
+          upload={upload}
+          uploadError={uploadError}
+          onUploadFile={onUploadFile}
+          onUploadOffset={onUploadOffset}
+          duration={duration}
+        />
       </Section>
 
       <Section title="Timing">
