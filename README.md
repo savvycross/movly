@@ -9,5 +9,5 @@ npm install
 npm run dev
 ```
 
-Live at https://movly-gamma.vercel.app/ (Vercel deploys every push to `main`). See [CLAUDE.md](CLAUDE.md)
+Live at https://movlyapp.vercel.app/ (Vercel deploys every push to `main`). See [CLAUDE.md](CLAUDE.md)
 for project details and the $0 rule.
