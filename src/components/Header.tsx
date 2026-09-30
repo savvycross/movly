@@ -1,3 +1,5 @@
+import { SITE } from '../siteConfig'
+
 export function Header() {
   return (
     <header className="header">
@@ -9,6 +11,11 @@ export function Header() {
         </span>
         <span className="brand-name">Movly</span>
       </a>
+      {SITE.token && (
+        <a className="header-token" href="#token">
+          ${SITE.token.ticker}
+        </a>
+      )}
     </header>
   )
 }
