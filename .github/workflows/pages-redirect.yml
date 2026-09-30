@@ -1,8 +1,15 @@
-name: Deploy to GitHub Pages
+name: Old URL redirect (GitHub Pages)
 
+# The app now lives on Vercel. GitHub Pages only serves a tiny page that
+# redirects https://savvycross.github.io/movly/ to VITE_SITE_URL (from .env),
+# so old links keep working. Redeploys when the URL or the page changes.
 on:
   push:
     branches: [main]
+    paths:
+      - .env
+      - scripts/build-redirect.mjs
+      - .github/workflows/pages-redirect.yml
   workflow_dispatch:
 
 permissions:
@@ -10,7 +17,6 @@ permissions:
   pages: write
   id-token: write
 
-# Only one deploy at a time; let an in-progress deploy finish rather than cancel it.
 concurrency:
   group: pages
   cancel-in-progress: false
@@ -27,14 +33,13 @@ jobs:
           cache: npm
 
       - run: npm ci
-      - run: npm test
-      - run: npm run build
+      - run: node scripts/build-redirect.mjs redirect-dist
 
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: redirect-dist
 
   deploy:
     needs: build

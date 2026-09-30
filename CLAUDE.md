@@ -9,7 +9,7 @@ it as a video — all inside the browser.
 Movly must cost **$0 to run**. Every change must respect this:
 
 - **No backend.** No servers, serverless functions, databases or edge workers.
-  The app is a static site hosted on GitHub Pages.
+  The app is a static site hosted on Vercel's free tier (static files only).
 - **No paid APIs or services.** No hosted rendering, transcoding, storage,
   analytics or auth that costs money (or that needs an API key/secret).
 - **Everything runs client-side.** Rendering, previewing and video export all
@@ -27,8 +27,9 @@ approach or flag it instead of adding one.
 
 - **Vite** (dev server + bundler), **React 19**, **TypeScript** (strict)
 - Plain CSS with custom properties (`src/index.css`) — dark theme, no CSS framework
-- Hosting: **GitHub Pages**, deployed by `.github/workflows/deploy.yml` on every
-  push to `main`
+- Hosting: **Vercel** (https://movly-gamma.vercel.app/), which builds and deploys
+  every push to `main`. GitHub Actions only runs checks (`ci.yml`) and serves a
+  redirect from the old GitHub Pages URL (`pages-redirect.yml`).
 
 ## Commands
 
@@ -261,6 +262,27 @@ in a circle crop), `x-profile.png` (400×400), `x-banner.png` (1500×500, text
 kept clear of X's profile-photo overlap), `telegram-group.png` (640×640). They
 use the same mark as `favicon.svg` and our own templates and fonts.
 
+## Hosting & deploys
+
+- **Vercel** builds `npm run build` and serves `dist/` for every push to
+  `main` (preview deploys for other branches). `vercel.json` only adds
+  long-lived `Cache-Control: immutable` for the content-hashed files in
+  `/assets/`. There's no separate `.wasm` file to configure: the WASM AAC
+  encoder is inlined in its lazy JS chunk.
+- **CI** (`.github/workflows/ci.yml`): typecheck, tests and a production
+  build on every push and pull request. It does not deploy.
+- **Old URL** (`https://savvycross.github.io/movly/`): `pages-redirect.yml`
+  deploys a tiny page built by `scripts/build-redirect.mjs` that instantly
+  redirects to `VITE_SITE_URL` (keeping `?query` and `#hash`; also served as
+  `404.html` for any old deep link). It carries Open Graph tags for the new
+  site so old links still preview correctly. It redeploys when `.env` or the
+  script changes. Leave GitHub Pages enabled (Source: GitHub Actions) so the
+  redirect keeps working.
+- **Moving hosts again:** set `VITE_SITE_URL` (absolute URL, used by share
+  tags and the redirect) and `VITE_BASE_PATH` (path prefix) in `.env`; no
+  code changes. Share images contain no URLs, so they don't need
+  regenerating.
+
 ## UX conventions
 
 - Keyboard: **Space** = play/pause, **←/→** = step a frame (**Shift** = 1s).
@@ -298,8 +320,9 @@ storage access is wrapped in try/catch (private mode, quota).
 
 - Time is measured in **frames** (30 fps, see `src/engine/timing.ts`). The
   timecode display is `seconds:frames` (`SS:FF`).
-- Vite `base` is `/movly/` because the site is served from
-  `https://<user>.github.io/movly/`. Use `import.meta.env.BASE_URL` for
-  runtime asset URLs; never hard-code `/`-rooted paths.
+- Vite `base` comes from `VITE_BASE_PATH` (`.env`, default `/` for Vercel's
+  domain root; e.g. `/movly/` for a sub-path host). Use
+  `import.meta.env.BASE_URL` for runtime asset URLs; never hard-code
+  `/`-rooted paths, so moving hosts stays a one-line `.env` change.
 - Layout must work on mobile: below 860px the sidebar stacks under the preview.
   Check new UI at phone widths (~390px) with no horizontal scrolling.
